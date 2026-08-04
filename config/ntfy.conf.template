@@ -1,0 +1,16 @@
+# claude-code-grid ntfy push config — install.sh copies this to
+# ~/.config/claude-code-grid/ntfy.conf with a freshly generated random topic.
+# Unset/empty NTFY_URL = feature off, zero network calls.
+#
+# To receive pushes: install the ntfy app (iOS/Android) and subscribe to
+# your topic. The topic name is the only auth on ntfy.sh — treat it like a
+# password (anyone who has it can send/read these pushes).
+NTFY_URL=""
+
+# Optional bearer token for a protected/self-hosted topic.
+NTFY_TOKEN=""
+
+# Only push to the phone when the Mac has been idle (no keyboard/mouse) for
+# at least this many seconds — while you're at the desk, the macOS banner is
+# enough. 0 = always push.
+NTFY_IDLE_THRESHOLD=120
