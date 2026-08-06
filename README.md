@@ -45,8 +45,13 @@ profile (`CLAUDE_CONFIG_DIR=~/.claude-<profile>`):
 
 ## Keys
 
+`prefix` is tmux's default `Ctrl-b` unless you've remapped it. **`prefix+?`
+shows this table in a popup**, so it's one keypress away rather than a
+README lookup.
+
 | key                               | what it does                                                                     |
 | --------------------------------- | -------------------------------------------------------------------------------- |
+| `prefix+?`                        | cheatsheet popup — every key below, plus what the border glyphs mean             |
 | `prefix+n`                        | **jump to the pane that most wants you** — blocked first, longest-waiting first; repeat to cycle |
 | `prefix+m`                        | mark/unmark this pane for targeted broadcast (`⦿` in its border)                 |
 | `prefix+p` / `prefix+P`           | pick a saved prompt → send to this pane / to the marked panes (all, if none marked) |
@@ -147,6 +152,7 @@ scripts/         the engine + helpers (all standalone, no state in-repo)
   grid-prompt/mark saved prompts + targeted broadcast
   grid-board.sh    shared cross-repo board (note / show / SessionStart inject)
   grid-git/log.sh  popups
+  grid-help.sh     prefix+? cheatsheet
   grid-restore.sh  post-reboot relaunch with --continue
   grid-lib.sh      shared helpers (sourced, POSIX subset — see gotchas)
 zsh/grid.zsh     pdev/wdev command families, claude_tracked launcher
