@@ -136,9 +136,15 @@ art_size() {  # sets reply=(width height)
   reply=($w $h)
 }
 
+# The piece is chosen by hashing the repo label, not at random: after a few
+# days you recognise a pane by its art before you've read the label, which
+# only works if a repo keeps the same one every launch. The walk from `start`
+# still skips pieces too big for the pane, so a narrow pane may land on its
+# second choice — stable per (repo, size), which is what matters.
 chosen="" cw=0 ch=0
 n=${#art_names[@]}
-start=$(( RANDOM % n ))
+seed=$(printf '%s' "$label" | cksum | awk '{print $1}')
+start=$(( ${seed:-0} % n ))
 for i in {0..$(( n - 1 ))}; do
   name=${art_names[$(( (start + i) % n + 1 ))]}
   [ -n "${GRID_SPLASH_ART:-}" ] && name=$GRID_SPLASH_ART
@@ -160,7 +166,7 @@ if [ -n "${TMUX:-}" ] && [ -n "${TMUX_PANE:-}" ]; then
 fi
 case "$c" in
   <->) ;;
-  *) palette=(45 141 214 114 203 81 178 135); c=${palette[$(( RANDOM % ${#palette[@]} + 1 ))]} ;;
+  *) palette=(45 141 214 114 203 81 178 135); c=${palette[$(( ${seed:-0} % ${#palette[@]} + 1 ))]} ;;
 esac
 tint=$'\033[38;5;'"${c}m"
 bold=$'\033[1m' dim=$'\033[2;37m' reset=$'\033[0m'

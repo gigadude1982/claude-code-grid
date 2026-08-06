@@ -9,6 +9,12 @@
 #   pdev-pick / wdev-pick  fzf multi-select which repos get panes (tab =
 #                          toggle, enter = launch); selection is remembered
 #   pdev-stop / wdev-stop  tear down + safe-prune auto-created worktrees
+#
+# Inside a running grid (also bound to prefix keys — see tmux/grid.tmux.conf):
+#   grid-add [repo]        give another repo a pane without rebuilding
+#   grid-drop              close the current pane's repo
+#   grid-note "<text>"     leave a note the other panes' sessions will read
+#   grid-board             show the shared board
 
 : ${GRID_DIR:=$HOME/dev/claude-code-grid}
 : ${GRID_CONFIG:=$HOME/.config/claude-code-grid}
@@ -17,11 +23,13 @@
 : ${GRID_WORK_ROOT:=$HOME/work}
 : ${GRID_WORK_PROFILE:=work}
 
-# Splash rendered in each pane before claude launches: random full-pane
-# ASCII art (scripts/splash.sh) tinted to match the pane's border color,
-# with the repo/branch line beneath. Visible during claude's startup delay
-# and again whenever claude exits (claude runs on the alternate screen).
-# Falls back to just the repo/branch line if the script is missing.
+# Splash rendered in each pane before claude launches: a full-pane ASCII art
+# piece (scripts/splash.sh) chosen by hashing the repo name — so a repo keeps
+# the same art across launches and becomes recognisable at a glance — tinted
+# to match the pane's border color, with the repo/branch line beneath.
+# Visible during claude's startup delay and again whenever claude exits
+# (claude runs on the alternate screen). Falls back to just the repo/branch
+# line if the script is missing.
 claude_splash() {
   local label="$1" branch
   if [ -r "$GRID_DIR/scripts/splash.sh" ]; then
@@ -39,11 +47,19 @@ claude_splash() {
 # prune-worktrees.sh can safely clean it up later. The tracker records the
 # worktree as soon as it appears rather than waiting for claude to exit — if
 # the pane gets killed outright, teardown still knows what to check.
+#
+# $5 = "resume" launches with --continue (grid-restore.sh passes this after a
+# reboot, and only when it has confirmed a stored conversation exists — bare
+# --continue errors out when there isn't one).
 claude_tracked() {
-  local repo="$1" label="$2" state_file="$3" profile="${4:-personal}"
+  local repo="$1" label="$2" state_file="$3" profile="${4:-personal}" resume="${5:-}"
   claude_splash "$label"
   (zsh "$GRID_DIR/scripts/track-worktree.sh" "$repo" "$state_file" &>/dev/null &)
-  CLAUDE_CONFIG_DIR="$HOME/.claude-$profile" claude
+  if [ "$resume" = resume ]; then
+    CLAUDE_CONFIG_DIR="$HOME/.claude-$profile" claude --continue
+  else
+    CLAUDE_CONFIG_DIR="$HOME/.claude-$profile" claude
+  fi
 }
 
 _grid_pick() {
@@ -85,3 +101,11 @@ pdev-stop() { _grid_stop   personal; }
 wdev()      { _grid_launch work "$GRID_WORK_ROOT" "$GRID_WORK_PROFILE"; }
 wdev-pick() { _grid_pick   work "$GRID_WORK_ROOT" "$GRID_WORK_PROFILE"; }
 wdev-stop() { _grid_stop   work; }
+
+# In-grid commands. These read the grid's configuration off the tmux session,
+# so they only mean anything from inside a pane — which is also the only
+# place you'd type them.
+grid-add()   { "$GRID_DIR/scripts/grid-add.sh" "$@"; }
+grid-drop()  { "$GRID_DIR/scripts/grid-drop.sh" "$@"; }
+grid-note()  { "$GRID_DIR/scripts/grid-board.sh" note "$@"; }
+grid-board() { "$GRID_DIR/scripts/grid-board.sh" show; }
