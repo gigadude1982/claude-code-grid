@@ -7,17 +7,21 @@
 # machinery (prune-dispatch.sh on session close, plus the sweep below on
 # start) applies per session.
 #
+# The grid's configuration (root, profile, state file) is stashed on the tmux
+# session as user options, so grid-add.sh and grid-restore.sh can build a
+# pane that matches the rest of the grid without being handed the arguments
+# again — and so it survives this script exiting.
+#
 # GRID_CMD env override exists for tests only: replaces the claude_tracked
 # launch line typed into each pane.
 set -u
 
 SCRIPT_DIR="${0:A:h}"
-GRID_CONFIG="${GRID_CONFIG:-$HOME/.config/claude-code-grid}"
+. "$SCRIPT_DIR/grid-lib.sh"
 
 SESSION=personal
 ROOT=~/dev
 PROFILE=personal
-PALETTE=(colour45 colour141 colour214 colour114 colour203 colour81 colour178 colour135)
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -29,6 +33,7 @@ while [ $# -gt 0 ]; do
 done
 
 STATE="$GRID_CONFIG/$SESSION.worktrees"
+BOARD="$GRID_CONFIG/$SESSION.board.md"
 
 if [ $# -eq 0 ]; then
   echo "usage: start-grid.sh [--session S] [--root DIR] [--profile P] <repo-rel-path>..." >&2
@@ -45,13 +50,30 @@ fi
 # terminal quit, reboot) before building the new grid.
 "$SCRIPT_DIR/prune-worktrees.sh" "$STATE"
 
+# Each launch starts the shared board fresh: it's a scratchpad for what the
+# sessions are doing to each other *right now*, and yesterday's notes read as
+# fact when they're actually stale.
+mkdir -p "$GRID_CONFIG"
+: > "$BOARD"
+
+# The session options below are the fast path, but tmux user options don't
+# survive a reboot — resurrect restores layout and paths, nothing else. This
+# file is what grid-restore.sh reads to rebuild them.
+{
+  echo "GRID_ROOT=$ROOT"
+  echo "GRID_PROFILE=$PROFILE"
+} > "$GRID_CONFIG/$SESSION.env"
+
 tmux new-session -d -s "$SESSION" -n repos -c "$ROOT"
+
+tmux set-option -t "$SESSION" @grid_root    "$ROOT"
+tmux set-option -t "$SESSION" @grid_profile "$PROFILE"
+tmux set-option -t "$SESSION" @grid_state   "$STATE"
+tmux set-option -t "$SESSION" @grid_board   "$BOARD"
 
 i=0
 for rel in "$@"; do
   repo="$ROOT/$rel"
-  label="${rel//\//-}"
-  color="${PALETTE[$((i % ${#PALETTE[@]} + 1))]}"
   if [ ! -d "$repo" ]; then
     echo "skipping $rel — no such directory" >&2
     continue
@@ -60,12 +82,8 @@ for rel in "$@"; do
     tmux split-window -t "$SESSION:0" -c "$ROOT"
     tmux select-layout -t "$SESSION:0" tiled
   fi
-  pane="$SESSION:0.$i"
-  tmux set-option -p -t "$pane" @repo "$label"
-  tmux set-option -p -t "$pane" @repo_color "$color"
-  tmux send-keys -t "$pane" "clear" C-m
-  tmux send-keys -t "$pane" "cd $repo" C-m
-  tmux send-keys -t "$pane" "${GRID_CMD:-claude_tracked $repo \"$label\" $STATE $PROFILE}" C-m
+  "$SCRIPT_DIR/grid-pane.sh" "$SESSION:0.$i" "$repo" "$(grid_label "$rel")" \
+    "$(grid_color "$i")" "$STATE" "$PROFILE"
   i=$((i + 1))
 done
 

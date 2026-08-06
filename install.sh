@@ -61,19 +61,84 @@ if ! grep -qF "$tline" "$HOME/.tmux.conf"; then
   say "added grid.tmux.conf source line to ~/.tmux.conf"
 fi
 
-# 5. Claude Code hooks (manual — settings.json is personal) -------------------
+# 5. Seed the prompt library --------------------------------------------------
+# prefix+p / prefix+P pick from these. Filename is what you see in the picker;
+# contents are what gets sent. Only written if absent, so edits survive
+# re-running the installer.
+mkdir -p "$GRID_CONFIG/prompts"
+seed_prompt() {
+  [ -f "$GRID_CONFIG/prompts/$1" ] || printf '%s\n' "$2" > "$GRID_CONFIG/prompts/$1"
+}
+seed_prompt commit-and-push "Commit the current changes with a conventional-commit message, then push."
+seed_prompt run-tests       "Run the test suite. If anything fails, fix it and re-run until it's green."
+seed_prompt review-branch   "Review the diff on this branch against main for bugs, missing error handling, and anything that would fail in production. Don't fix anything yet — just report."
+seed_prompt open-pr         "Push the branch and open a PR with a summary of what changed and why."
+seed_prompt where-are-we    "Summarise what you've changed so far, what's still unfinished, and anything you're blocked on."
+
+# 6. Claude Code hooks --------------------------------------------------------
+# The grid needs six hook events wired per profile — enough that hand-merging
+# JSON is a reliable source of typos — so do it here with jq. Idempotent: an
+# event already pointing at the same script is left alone, and every other
+# hook in the file is preserved untouched.
+# Tilde form, matching what the README documents and what an existing install
+# already has in its settings.json — see the dedupe note in `ensure` below.
+grid_hook() { printf '%s' "~/dev/claude-code-grid/scripts/$1"; }
+
+wire_hooks() {
+  profile="$1"
+  dir="$HOME/.claude-$profile"
+  [ -d "$dir" ] || return 0
+  f="$dir/settings.json"
+  [ -f "$f" ] || echo '{}' > "$f"
+
+  cp "$f" "$f.bak-grid-$(date +%Y%m%d%H%M%S)"
+
+  jq \
+    --arg notify "$(grid_hook claude-notify.sh)" \
+    --arg state  "$(grid_hook pane-state.sh)" \
+    --arg board  "$(grid_hook grid-board.sh)" '
+    # Dedupe on the repo-relative tail ("claude-code-grid/scripts/x.sh args")
+    # rather than the whole string: an earlier install may have written the
+    # tilde form while a hand-edit used the absolute one, and an exact-match
+    # test would happily add the second copy — which means two notification
+    # banners per event, forever.
+    def ensure($event; $cmd):
+      ($cmd | ltrimstr("~/dev/")) as $tail
+      | .hooks //= {}
+      | .hooks[$event] //= []
+      | if [ .hooks[$event][]?.hooks[]?.command | select(contains($tail)) ] | length > 0
+        then .
+        else .hooks[$event] += [ { "hooks": [ { "type": "command", "command": $cmd } ] } ]
+        end;
+
+    # Pane state: what each pane is doing, drawn on its border.
+      ensure("SessionStart";     $state + " idle")
+    | ensure("UserPromptSubmit"; $state + " working")
+    | ensure("PreToolUse";       $state + " working")
+    | ensure("Notification";     $state + " waiting")
+    | ensure("Stop";             $state + " done")
+    | ensure("SessionEnd";       $state + " gone")
+
+    # Desktop + phone notifications.
+    | ensure("Notification"; $notify)
+    | ensure("Stop";         $notify)
+
+    # Shared cross-repo board, injected into every session at startup.
+    | ensure("SessionStart"; $board + " inject")
+  ' "$f" > "$f.tmp" && mv "$f.tmp" "$f" && say "wired grid hooks into $f"
+}
+
+for p in "${GRID_PERSONAL_PROFILE:-personal}" "${GRID_WORK_PROFILE:-work}"; do
+  wire_hooks "$p"
+done
+
 cat <<'EOF'
 
-── manual step: notification hooks ──────────────────────────────────────────
-Add to each Claude profile's settings.json (e.g. ~/.claude-personal/settings.json)
-under "hooks" — merge with whatever is already there:
+── done ─────────────────────────────────────────────────────────────────────
+  exec zsh && pdev        (or wdev)
 
-  "Notification": [{ "hooks": [
-    { "type": "command", "command": "~/dev/claude-code-grid/scripts/claude-notify.sh" }
-  ]}],
-  "Stop": [{ "hooks": [
-    { "type": "command", "command": "~/dev/claude-code-grid/scripts/claude-notify.sh" }
-  ]}]
-
-Then: exec zsh && pdev  (or wdev). Enjoy the grid.
+Inside the grid:
+  prefix+n  jump to the pane that wants you    prefix+g  git status, all repos
+  prefix+m  mark panes    prefix+p/P  send a saved prompt
+  prefix+a  add a repo    prefix+X  drop one   prefix+B  shared board
 EOF
