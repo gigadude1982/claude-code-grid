@@ -54,6 +54,12 @@ source ~/dev/claude-code-grid/zsh/grid.zsh
 
 ## Features
 
+- **ASCII art splash screens** — each pane opens on a random full-pane art
+  piece (rocket, skull, storm cloud, block-letter CLAUDE, …) tinted to match
+  its border color, with the repo/branch line beneath. It fills Claude's
+  startup delay and reappears whenever Claude exits, since Claude runs on
+  the alternate screen. `GRID_SPLASH_ART=<name>` pins a favorite; panes too
+  small for art get just the repo/branch line.
 - **Pane borders that stay put** — repo name (per-repo color), current
   branch, and a live `●` dirty / `✓` clean git indicator. Claude Code
   overwrites tmux's `pane_title` via terminal escapes, so labels ride on

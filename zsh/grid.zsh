@@ -17,10 +17,17 @@
 : ${GRID_WORK_ROOT:=$HOME/work}
 : ${GRID_WORK_PROFILE:=work}
 
-# Startup banner printed at the top of each pane before claude launches, so
-# it's obvious which repo/branch a pane is in even mid-scrollback.
+# Splash rendered in each pane before claude launches: random full-pane
+# ASCII art (scripts/splash.sh) tinted to match the pane's border color,
+# with the repo/branch line beneath. Visible during claude's startup delay
+# and again whenever claude exits (claude runs on the alternate screen).
+# Falls back to just the repo/branch line if the script is missing.
 claude_splash() {
   local label="$1" branch
+  if [ -r "$GRID_DIR/scripts/splash.sh" ]; then
+    zsh "$GRID_DIR/scripts/splash.sh" "$label" "${COLUMNS:-}" "${LINES:-}"
+    return
+  fi
   branch=$(git branch --show-current 2>/dev/null)
   printf '\033[1;36m▸ %s\033[0m' "$label"
   [ -n "$branch" ] && printf '  \033[2;37m(%s)\033[0m' "$branch"
