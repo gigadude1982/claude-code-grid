@@ -41,7 +41,11 @@ if command -v tmux >/dev/null 2>&1; then
 fi
 
 cmd="${1:-show}"
-shift 2>/dev/null || true
+# Drop the subcommand, keeping the rest as-is: `note` takes the whole
+# remaining line as its text. Spelled out rather than `shift 2>/dev/null`,
+# which shifts by one (the 2> is a redirection, not a count) but reads like
+# it shifts by two.
+[ $# -gt 0 ] && shift
 
 case "$cmd" in
   note)

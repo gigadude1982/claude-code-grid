@@ -23,7 +23,16 @@ tmux set-option -p -t "$pane" @state       idle
 tmux set-option -p -t "$pane" @state_since "$(date +%s)"
 tmux set-option -p -t "$pane" pane-border-style "fg=colour238"
 
+# send-keys types into an interactive shell, so everything here is re-parsed
+# by zsh. A repo path with a space in it would otherwise turn `cd` into a
+# two-argument command and the launch line into the wrong invocation
+# entirely, so each value goes through printf %q first.
+q_repo=$(printf '%q' "$repo")
+q_label=$(printf '%q' "$label")
+q_state=$(printf '%q' "$state_file")
+q_profile=$(printf '%q' "$profile")
+
 tmux send-keys -t "$pane" "clear" C-m
-tmux send-keys -t "$pane" "cd $repo" C-m
+tmux send-keys -t "$pane" "cd $q_repo" C-m
 tmux send-keys -t "$pane" \
-  "${GRID_CMD:-claude_tracked $repo \"$label\" $state_file $profile $resume}" C-m
+  "${GRID_CMD:-claude_tracked $q_repo $q_label $q_state $q_profile $resume}" C-m

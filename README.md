@@ -65,11 +65,11 @@ git clone https://github.com/gigadude1982/claude-code-grid ~/dev/claude-code-gri
 ~/dev/claude-code-grid/install.sh
 ```
 
-The installer brew-installs missing deps (`tmux`, `fzf`, `jq`,
-`terminal-notifier`), creates `~/.config/claude-code-grid/` with a fresh
-random ntfy topic, seeds a starter prompt library, clones **pinned**
-tmux-resurrect/continuum, adds one `source` line each to `~/.zshrc` and
-`~/.tmux.conf`, and merges the grid's hooks into each profile's
+The installer: brew-installs missing deps (`tmux`, `fzf`, `jq`,
+`terminal-notifier`); creates `~/.config/claude-code-grid/` with a fresh
+random ntfy topic; seeds a starter prompt library; clones **pinned**
+tmux-resurrect/continuum; adds one `source` line each to `~/.zshrc` and
+`~/.tmux.conf`; and merges the grid's hooks into each profile's
 `settings.json` with `jq` — idempotently, backing the file up first and
 leaving every other hook untouched. Re-run it any time.
 
