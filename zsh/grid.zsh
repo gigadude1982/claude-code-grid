@@ -9,6 +9,9 @@
 #   pdev-pick / wdev-pick  fzf multi-select which repos get panes (tab =
 #                          toggle, enter = launch); selection is remembered
 #   pdev-stop / wdev-stop  tear down + safe-prune auto-created worktrees
+#   pdev-sweep / wdev-sweep  safe-prune EVERY worktree sitting on disk for
+#                          the grid's repos, tracked or not (run any time,
+#                          session up or down — doesn't touch tmux)
 #
 # Inside a running grid (also bound to prefix keys — see tmux/grid.tmux.conf):
 #   grid-add [repo]        give another repo a pane without rebuilding
@@ -95,12 +98,14 @@ _grid_stop() {
   echo "$session grid stopped; prune log: $GRID_CONFIG/$session.log"
 }
 
-pdev()      { _grid_launch personal "$GRID_PERSONAL_ROOT" "$GRID_PERSONAL_PROFILE"; }
-pdev-pick() { _grid_pick   personal "$GRID_PERSONAL_ROOT" "$GRID_PERSONAL_PROFILE"; }
-pdev-stop() { _grid_stop   personal; }
-wdev()      { _grid_launch work "$GRID_WORK_ROOT" "$GRID_WORK_PROFILE"; }
-wdev-pick() { _grid_pick   work "$GRID_WORK_ROOT" "$GRID_WORK_PROFILE"; }
-wdev-stop() { _grid_stop   work; }
+pdev()       { _grid_launch personal "$GRID_PERSONAL_ROOT" "$GRID_PERSONAL_PROFILE"; }
+pdev-pick()  { _grid_pick   personal "$GRID_PERSONAL_ROOT" "$GRID_PERSONAL_PROFILE"; }
+pdev-stop()  { _grid_stop   personal; }
+pdev-sweep() { "$GRID_DIR/scripts/grid-sweep.sh" personal; }
+wdev()       { _grid_launch work "$GRID_WORK_ROOT" "$GRID_WORK_PROFILE"; }
+wdev-pick()  { _grid_pick   work "$GRID_WORK_ROOT" "$GRID_WORK_PROFILE"; }
+wdev-stop()  { _grid_stop   work; }
+wdev-sweep() { "$GRID_DIR/scripts/grid-sweep.sh" work; }
 
 # In-grid commands. These read the grid's configuration off the tmux session,
 # so they only mean anything from inside a pane — which is also the only
