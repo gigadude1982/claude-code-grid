@@ -14,3 +14,8 @@ NTFY_TOKEN=""
 # at least this many seconds — while you're at the desk, the macOS banner is
 # enough. 0 = always push.
 NTFY_IDLE_THRESHOLD=120
+
+# Optional URL opened when you tap a push on your phone — e.g. a remote
+# terminal you can jump into to see the pane that fired it. Empty = ntfy's
+# default (open the app to this topic).
+NTFY_CLICK_URL=""

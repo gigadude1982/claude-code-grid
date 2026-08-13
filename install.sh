@@ -76,7 +76,7 @@ seed_prompt open-pr         "Push the branch and open a PR with a summary of wha
 seed_prompt where-are-we    "Summarise what you've changed so far, what's still unfinished, and anything you're blocked on."
 
 # 6. Claude Code hooks --------------------------------------------------------
-# The grid needs six hook events wired per profile — enough that hand-merging
+# The grid needs seven hook events wired per profile — enough that hand-merging
 # JSON is a reliable source of typos — so do it here with jq. Idempotent: an
 # event already pointing at the same script is left alone, and every other
 # hook in the file is preserved untouched.
@@ -120,8 +120,9 @@ wire_hooks() {
     | ensure("SessionEnd";       $state + " gone")
 
     # Desktop + phone notifications.
-    | ensure("Notification"; $notify)
-    | ensure("Stop";         $notify)
+    | ensure("Notification";  $notify)
+    | ensure("Stop";          $notify)
+    | ensure("StopFailure";   $notify)
 
     # Shared cross-repo board, injected into every session at startup.
     | ensure("SessionStart"; $board + " inject")

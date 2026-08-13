@@ -118,10 +118,15 @@ source ~/dev/claude-code-grid/zsh/grid.zsh
   personal/work accounts based on the attached session. Reads the cache
   maintained by [claude-status-line](https://github.com/gigadude1982/claude-status-line)
   — zero extra API calls.
-- **Notifications** — macOS banner when any session finishes (silent) or needs
-  input (sound), tagged with the repo. Optionally an [ntfy](https://ntfy.sh)
-  push to your phone — but only when the Mac has been idle a while (`ioreg` HID
-  idle time), so you're only pinged when you've actually walked away.
+- **Notifications** — a macOS banner (and optional [ntfy](https://ntfy.sh)
+  phone push) for every session, tagged with the repo and classified by what
+  actually happened: ✅ finished normally (silent, with a one-line summary of
+  the last reply), 💬/⚠️/❓ waiting on you (sound — permission prompt, plain
+  input, or an interactive dialog get distinct icons), ❌ the turn died on an
+  API error (sound). The phone push only fires once the Mac's been idle a
+  while (`ioreg` HID idle time), so you're only pinged when you've actually
+  walked away. Click a banner (or tap the push, if you've set
+  `NTFY_CLICK_URL`) to jump straight back to the pane that sent it.
 - **ASCII art splash screens** — each pane opens on a full-pane art piece
   (rocket, skull, storm cloud, block-letter CLAUDE, …) tinted to match its
   border color. The piece is chosen by **hashing the repo name**, so a repo
@@ -147,6 +152,10 @@ scripts/         the engine + helpers (all standalone, no state in-repo)
   start-grid.sh    builds the session; grid-pane.sh dresses each pane
   pane-state.sh    Claude hook → per-pane @state (the dashboard's input)
   pane-border.sh   border label; grid-rollup.sh → status bar
+  claude-notify.sh Claude hook → macOS banner + ntfy push, classified by
+                   event (Stop/StopFailure/Notification type)
+  grid-notify-click.sh  "click for more details" — jump to the pane that
+                   fired a banner (invoked by claude-notify.sh's -execute)
   grid-next.sh     prefix+n attention queue
   grid-add/drop    reshape a live grid
   grid-prompt/mark saved prompts + targeted broadcast
