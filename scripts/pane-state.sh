@@ -67,4 +67,11 @@ tmux set-option -p -t "$TMUX_PANE" pane-border-style "$style" 2>/dev/null
 # churn to communicate nothing new.
 [ "$changed" = "1" ] && tmux refresh-client -S 2>/dev/null
 
+# A finished turn earns one flash in the status line — enough to catch the
+# eye across the room without stealing focus. Transition only, so a repeated
+# Stop event can't re-celebrate.
+if [ "$changed" = "1" ] && [ "$state" = "done" ]; then
+  tmux display-message -t "$TMUX_PANE" -d 2000 "#[fg=colour114] ✔ $repo finished ✨" 2>/dev/null
+fi
+
 exit 0

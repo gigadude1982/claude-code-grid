@@ -15,6 +15,15 @@ set -u
 
 pane="$1" repo="$2" label="$3" color="$4" state_file="$5" profile="$6" resume="${7:-}"
 
+# A hand-picked color (grid-color.sh, right-click on the border) beats the
+# palette-by-index deal, so rebuilds and restores keep the user's choice.
+session=$(tmux display-message -p -t "$pane" '#{session_name}' 2>/dev/null)
+cf="${GRID_CONFIG:-$HOME/.config/claude-code-grid}/$session.colors"
+if [ -n "$session" ] && [ -f "$cf" ]; then
+  override=$(awk -v l="$label" '$1 == l { print $2 }' "$cf" | tail -1)
+  [ -n "$override" ] && color="$override"
+fi
+
 # The README's first gotcha: `set-option -p` without `-t` targets the
 # window's *active* pane, not the one we mean.
 tmux set-option -p -t "$pane" @repo        "$label"
