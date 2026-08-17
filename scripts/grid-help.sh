@@ -48,6 +48,11 @@ printf "   %s▲%s blocked on you   %s▶%s working   %s✔%s finished   %s·%s 
 printf "   %s⦿%s marked          %s●%s uncommitted  %s✓%s clean       %s3m%s in that state\n" \
   "$key" "$r" "$red" "$r" "$grn" "$r" "$gry" "$r"
 
+printf '\n %sMOUSE%s\n' "$hd" "$r"
+printf "   ${key}%-7s${r} %s\n" "title" "click = rename · right-click = theme menu · scroll = cycle theme"
+printf "   ${key}%-7s${r} %s\n" "dots" "click a pane's ● in the title line to jump to it"
+printf "   ${key}%-7s${r} %s\n" "pane" "right-click a pane for its menu, its border for repo colours"
+
 printf '\n %sFROM THE SHELL%s\n' "$hd" "$r"
 printf "   %sgrid-add%s [repo]   %sgrid-drop%s   %sgrid-note%s \"…\"   %sgrid-board%s\n" \
   "$key" "$r" "$key" "$r" "$key" "$r" "$key" "$r"
