@@ -55,7 +55,15 @@ printf "   %spdev%s / %spdev-pick%s / %spdev-stop%s      %s(wdev… for the work
   "$key" "$r" "$key" "$r" "$key" "$r" "$d" "$r"
 
 printf '\n %s%s : list-keys   for tmux'"'"'s own bindings%s\n' "$d" "$p" "$r"
-printf '\n %spress any key%s' "$d" "$r"
+printf '\n %spress any key — or click the %s✗%s' "$d" "$red" "$r"
+
+# Red ✗ in the top-right corner as the close affordance. Mouse reporting
+# (1000) with SGR encoding (1006) is on only while waiting, so a click lands
+# in the same read as a keypress — any click closes, the ✗ shows where.
 # `|| true`: read returns non-zero on EOF, which happens whenever this is run
 # with stdin redirected rather than in the popup's tty.
+cols=$(tput cols 2>/dev/null) || cols=82
+printf '%s7%s[1;%dH%s%s✗%s%s8' "$esc" "$esc" "$((cols-2))" "$b" "$red" "$r" "$esc"
+printf '%s[?1000h%s[?1006h' "$esc" "$esc"
 read -rsn1 || true
+printf '%s[?1000l%s[?1006l' "$esc" "$esc"
