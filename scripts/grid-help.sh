@@ -49,7 +49,7 @@ printf "   %s⦿%s marked          %s●%s uncommitted  %s✓%s clean       %s3m
   "$key" "$r" "$red" "$r" "$grn" "$r" "$gry" "$r"
 
 printf '\n %sMOUSE%s\n' "$hd" "$r"
-printf "   ${key}%-7s${r} %s\n" "title" "click = rename · right-click or the ■ button = themes · scroll = cycle"
+printf "   ${key}%-7s${r} %s\n" "title" "click = rename · right-click or theme: button = menu · scroll = cycle"
 printf "   ${key}%-7s${r} %s\n" "dots" "click a pane's ● in the title line to jump to it"
 printf "   ${key}%-7s${r} %s\n" "pane" "right-click a pane for its menu, its border for repo colours"
 printf "   ${key}%-7s${r} %s\n" "chips" "✚ add repo · ⎇ git (● = dirty count) · ▤ board · ✎ prompt · ⛶ zoom"
