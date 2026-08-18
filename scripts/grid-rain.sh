@@ -39,11 +39,14 @@ TAIL=12
 cleanup() {
   [ -n "${anim:-}" ] && kill "$anim" 2>/dev/null
   wait 2>/dev/null
-  printf '\e[0m\e[?25h\e[2J\e[H\e[?1049l'
+  printf '\e[?1000l\e[?1006l\e[0m\e[?25h\e[2J\e[H\e[?1049l'
 }
 trap cleanup EXIT INT TERM
 
-printf '\e[?1049h\e[?25l\e[2J'
+# Mouse reporting (1000, SGR-encoded via 1006) is on for the duration: a
+# click lands as an escape sequence on the same stdin the read below waits
+# on, so mouse and keyboard both wake the grid.
+printf '\e[?1049h\e[?25l\e[2J\e[?1000h\e[?1006h'
 
 animate() {
   n=${#GLYPHS[@]}
@@ -85,5 +88,6 @@ animate() {
 animate &
 anim=$!
 
-# Any key — or EOF, when there's no tty to read — ends the show.
+# Any key or mouse click — or EOF, when there's no tty to read — ends the
+# show.
 IFS= read -rsn1 || true
