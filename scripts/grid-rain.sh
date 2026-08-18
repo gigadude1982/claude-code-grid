@@ -21,8 +21,19 @@ case "$accent" in (*[!0-9]*|'') accent=46 ;; esac
 # multibyte strings — indexing glyphs is safe where slicing them isn't.
 GLYPHS=(ｱ ｲ ｳ ｴ ｵ ｶ ｷ ｸ ｹ ｺ ｻ ｼ ｽ ｾ ｿ ﾀ ﾁ ﾂ ﾃ ﾄ ﾅ ﾆ ﾇ ﾈ ﾉ ﾊ ﾋ ﾌ ﾍ ﾎ ﾏ ﾐ ﾑ ﾒ ﾓ ﾔ ﾕ ﾖ ﾗ ﾘ ﾙ ﾚ ﾛ ﾜ ﾝ 0 1 2 3 4 5 6 7 8 9 Z X '$' '#' '%' '+' '=' '-')
 
-cols=$(tput cols 2>/dev/null) || cols=80
-rows=$(tput lines 2>/dev/null) || rows=24
+# Size from the tty on stdin — tput can't reach the client's tty in the
+# lock-command context and quietly reports 80x24, which painted the rain
+# into the screen's first quadrant. stty asks the fd the keys arrive on.
+size=$(stty size 2>/dev/null)
+rows=${size%% *}
+cols=${size##* }
+if ! [ "$rows" -gt 0 ] 2>/dev/null || ! [ "$cols" -gt 0 ] 2>/dev/null; then
+  size=$(tmux display-message -p '#{client_height} #{client_width}' 2>/dev/null)
+  rows=${size%% *}
+  cols=${size##* }
+fi
+[ "$rows" -gt 0 ] 2>/dev/null || rows=24
+[ "$cols" -gt 0 ] 2>/dev/null || cols=80
 TAIL=12
 
 cleanup() {

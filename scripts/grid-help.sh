@@ -52,7 +52,7 @@ printf '\n %sMOUSE%s\n' "$hd" "$r"
 printf "   ${key}%-7s${r} %s\n" "title" "click = rename · right-click or the ■ button = themes · scroll = cycle"
 printf "   ${key}%-7s${r} %s\n" "dots" "click a pane's ● in the title line to jump to it"
 printf "   ${key}%-7s${r} %s\n" "pane" "right-click a pane for its menu, its border for repo colours"
-printf "   ${key}%-7s${r} %s\n" "chips" "🐇 rain now · ⇄ broadcast · also rains after 10m idle, keys wake"
+printf "   ${key}%-7s${r} %s\n" "chips" "☔ or C-\\ rain · 🐇 pane that wants you · ⇄ broadcast · 10m idle rains"
 
 printf '\n %sFROM THE SHELL%s\n' "$hd" "$r"
 printf "   %sgrid-add%s [repo]   %sgrid-drop%s   %sgrid-note%s \"…\"   %sgrid-board%s\n" \
