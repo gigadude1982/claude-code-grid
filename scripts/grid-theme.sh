@@ -22,17 +22,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 THEMES="grid synthwave matrix amber nord dracula gruvbox ocean"
 MENU_KEYS="g s m a n d v o"
 
-# accent key bg fg pane-bg pane-active-bg highlight
+# accent key bg fg pane-bg pane-active-bg highlight pane-fg border
+#
+# pane-fg recolors text drawn in the terminal's *default* color — themes
+# that keep it "default" leave content alone. border is the neutral frame
+# tint pane-state.sh uses for idle/working panes; blocked-red and done-green
+# still override it. matrix is the full treatment: green-on-black content
+# inside a white frame.
 theme_colors() {
   case "$1" in
-    grid)      echo "colour45 colour221 colour233 colour250 colour232 colour234 colour45" ;;
-    synthwave) echo "colour201 colour51 colour53 colour183 colour232 colour235 colour201" ;;
-    matrix)    echo "colour46 colour118 colour232 colour71 colour232 colour22 colour46" ;;
-    amber)     echo "colour214 colour208 colour234 colour180 colour232 colour58 colour214" ;;
-    nord)      echo "colour110 colour222 colour236 colour252 colour234 colour236 colour110" ;;
-    dracula)   echo "colour141 colour228 colour235 colour253 colour233 colour235 colour141" ;;
-    gruvbox)   echo "colour208 colour214 colour235 colour223 colour234 colour236 colour208" ;;
-    ocean)     echo "colour39 colour86 colour17 colour153 colour232 colour17 colour39" ;;
+    grid)      echo "colour45 colour221 colour233 colour250 colour232 colour234 colour45 default colour240" ;;
+    synthwave) echo "colour201 colour51 colour53 colour183 colour232 colour235 colour201 default colour240" ;;
+    matrix)    echo "colour46 colour118 colour16 colour255 colour16 colour232 colour46 colour46 colour255" ;;
+    amber)     echo "colour214 colour208 colour234 colour180 colour232 colour58 colour214 default colour240" ;;
+    nord)      echo "colour110 colour222 colour236 colour252 colour234 colour236 colour110 default colour240" ;;
+    dracula)   echo "colour141 colour228 colour235 colour253 colour233 colour235 colour141 default colour240" ;;
+    gruvbox)   echo "colour208 colour214 colour235 colour223 colour234 colour236 colour208 default colour240" ;;
+    ocean)     echo "colour39 colour86 colour17 colour153 colour232 colour17 colour39 default colour240" ;;
     *)         return 1 ;;
   esac
 }
@@ -51,8 +57,9 @@ apply() {
   # from the rest — dimmed-vs-lit is the terminal's stand-in for opacity.
   # Border styles are deliberately NOT touched: pane-state.sh owns those,
   # and blocked-red must survive every theme.
-  tmux set-option -g window-style        "bg=$5"
-  tmux set-option -g window-active-style "bg=$6"
+  tmux set-option -g window-style        "bg=$5,fg=$8"
+  tmux set-option -g window-active-style "bg=$6,fg=$8"
+  tmux set-option -g @theme_border       "$9"
   tmux set-option -g mode-style          "bg=$7,fg=colour232"
   tmux set-option -g message-style       "bg=$3,fg=$1"
   tmux set-option -g menu-style          "bg=$3,fg=$4"

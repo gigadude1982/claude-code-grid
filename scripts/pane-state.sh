@@ -52,11 +52,15 @@ fi
 # Tint the pane's frame so a pane that wants you is obvious from across the
 # room, without having to read the label. Set on every event (not just
 # transitions) so a manually-cleared style heals itself.
+#
+# Neutral states (working/idle) take the theme's frame tint — matrix runs a
+# white frame — while waiting/done keep their semantic colors in every theme.
+tint=$(tmux show-options -gv @theme_border 2>/dev/null)
+[ -n "$tint" ] || tint=colour240
 case "$state" in
   waiting) style="fg=colour203,bold" ;;   # red — blocked on you
   done)    style="fg=colour114" ;;        # green — turn finished
-  working) style="fg=colour240" ;;        # dim — busy, leave it alone
-  *)       style="fg=colour238" ;;        # idle
+  *)       style="fg=$tint" ;;            # working/idle — the theme's frame
 esac
 tmux set-option -p -t "$TMUX_PANE" pane-border-style "$style" 2>/dev/null
 
