@@ -38,12 +38,13 @@ theme_colors() {
     matrix)    echo "colour46 colour118 colour16 colour255 colour16 colour232 colour46 colour46 colour255" ;;
     amber)     echo "colour214 colour208 colour234 colour222 colour232 colour58 colour214 default colour137" ;;
     nord)      echo "colour110 colour222 colour236 colour252 colour234 colour236 colour110 default colour240" ;;
-    # The classic: purple accents on gray-black grounds.
-    dracula)   echo "colour141 colour228 colour235 colour253 colour233 colour235 colour141 default colour240" ;;
+    # The classic: purple on gray-black, down to the default text.
+    dracula)   echo "colour141 colour228 colour235 colour253 colour233 colour235 colour141 colour141 colour240" ;;
     # The colorless vampire, save for the blood: black grounds, red accents
     # and red default text, white ?, gray chrome and frame.
     nosferatu) echo "colour160 colour255 colour232 colour250 colour16 colour233 colour160 colour160 colour245" ;;
-    gruvbox)   echo "colour208 colour214 colour235 colour223 colour234 colour236 colour208 default colour137" ;;
+    # yellow accents over orange default text.
+    gruvbox)   echo "colour214 colour208 colour235 colour223 colour234 colour236 colour214 colour208 colour137" ;;
     # cyan-on-blue: navy grounds, cyan default text, pale-cyan chrome.
     ocean)     echo "colour45 colour87 colour18 colour123 colour17 colour18 colour45 colour51 colour39" ;;
     *)         return 1 ;;
