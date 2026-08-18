@@ -1,11 +1,16 @@
 #!/bin/bash
 # grid-theme.sh apply <name> | load | next | prev | menu — the grid's look.
 #
-# Themes restyle the chrome — title accent, the ? button, the status ground —
+# Themes restyle the chrome (title accent, the ? button, the status ground —
 # via the @theme_* options that grid.tmux.conf's formats read, plus
-# status-style directly (a plain style, not a format, so it can't do the
-# indirection itself). Semantic colors stay fixed: blocked-red and done-green
-# mean the same thing in every theme.
+# status-style directly, a plain style that can't do the indirection itself)
+# AND the grid body: pane backgrounds with the active pane a shade apart —
+# the terminal's nearest thing to opacity, real translucency being the
+# emulator's — the copy-mode/search highlight, messages, and the menus.
+# Semantic colors stay fixed: blocked-red and done-green mean the same thing
+# in every theme. Note the pane grounds replace the terminal's default
+# background, so iTerm-level transparency stops showing through while a
+# theme is applied.
 #
 # The chosen name is written to $GRID_CONFIG/theme; grid.tmux.conf runs
 # `load` at server start so a restart comes back dressed.
@@ -17,17 +22,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 THEMES="grid synthwave matrix amber nord dracula gruvbox ocean"
 MENU_KEYS="g s m a n d v o"
 
-# accent key bg fg
+# accent key bg fg pane-bg pane-active-bg highlight
 theme_colors() {
   case "$1" in
-    grid)      echo "colour45 colour221 colour233 colour250" ;;
-    synthwave) echo "colour201 colour51 colour53 colour183" ;;
-    matrix)    echo "colour46 colour118 colour232 colour71" ;;
-    amber)     echo "colour214 colour208 colour234 colour180" ;;
-    nord)      echo "colour110 colour222 colour236 colour252" ;;
-    dracula)   echo "colour141 colour228 colour235 colour253" ;;
-    gruvbox)   echo "colour208 colour214 colour235 colour223" ;;
-    ocean)     echo "colour39 colour86 colour17 colour153" ;;
+    grid)      echo "colour45 colour221 colour233 colour250 colour232 colour234 colour45" ;;
+    synthwave) echo "colour201 colour51 colour53 colour183 colour232 colour235 colour201" ;;
+    matrix)    echo "colour46 colour118 colour232 colour71 colour232 colour22 colour46" ;;
+    amber)     echo "colour214 colour208 colour234 colour180 colour232 colour58 colour214" ;;
+    nord)      echo "colour110 colour222 colour236 colour252 colour234 colour236 colour110" ;;
+    dracula)   echo "colour141 colour228 colour235 colour253 colour233 colour235 colour141" ;;
+    gruvbox)   echo "colour208 colour214 colour235 colour223 colour234 colour236 colour208" ;;
+    ocean)     echo "colour39 colour86 colour17 colour153 colour232 colour17 colour39" ;;
     *)         return 1 ;;
   esac
 }
@@ -42,9 +47,23 @@ apply() {
   tmux set-option -g @theme_bg     "$3"
   tmux set-option -g @theme_fg     "$4"
   tmux set-option -g status-style  "bg=$3,fg=$4"
+  # The grid body, not just the chrome. The active pane sits a shade apart
+  # from the rest — dimmed-vs-lit is the terminal's stand-in for opacity.
+  # Border styles are deliberately NOT touched: pane-state.sh owns those,
+  # and blocked-red must survive every theme.
+  tmux set-option -g window-style        "bg=$5"
+  tmux set-option -g window-active-style "bg=$6"
+  tmux set-option -g mode-style          "bg=$7,fg=colour232"
+  tmux set-option -g message-style       "bg=$3,fg=$1"
+  tmux set-option -g menu-style          "bg=$3,fg=$4"
+  tmux set-option -g menu-selected-style "bg=$7,fg=colour232"
+  tmux set-option -g menu-border-style   "fg=$1,bg=$3"
   mkdir -p "$GRID_CONFIG"
   printf '%s\n' "$name" > "$GRID_CONFIG/theme"
   tmux refresh-client -S 2>/dev/null
+  # Visible receipt that a menu click landed — silent at server start, when
+  # there's no client to show it on.
+  tmux display-message -d 1200 "grid theme: $name" 2>/dev/null
 }
 
 current() {
@@ -75,7 +94,6 @@ case "${1:-menu}" in
   next|prev)
     if [ "$1" = next ]; then n=$(step 1); else n=$(step -1); fi
     apply "$n"
-    tmux display-message -d 1200 "grid theme: $n" 2>/dev/null
     ;;
   menu)
     # Explicit client: run-shell from a binding (and the CLI) has no client
