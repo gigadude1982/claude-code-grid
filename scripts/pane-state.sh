@@ -55,7 +55,8 @@ fi
 #
 # Neutral states (working/idle) take the theme's frame tint — matrix runs a
 # white frame — while waiting/done keep their semantic colors in every theme.
-tint=$(tmux show-options -gv @theme_border 2>/dev/null)
+tint=$(tmux show-options -v -t "$TMUX_PANE" @theme_border 2>/dev/null)
+[ -n "$tint" ] || tint=$(tmux show-options -gv @theme_border 2>/dev/null)
 [ -n "$tint" ] || tint=colour240
 case "$state" in
   waiting) style="fg=colour203,bold" ;;   # red — blocked on you

@@ -1,19 +1,23 @@
 #!/bin/bash
-# grid-theme.sh apply <name> | load | next | prev | menu — the grid's look.
+# grid-theme.sh apply <name> [session] | load [session] | next|prev [session]
+#              | party [session] | menu [client] [session]     — the grid's look.
 #
-# Themes restyle the chrome (title accent, the ? button, the status ground —
-# via the @theme_* options that grid.tmux.conf's formats read, plus
-# status-style directly, a plain style that can't do the indirection itself)
-# AND the grid body: pane backgrounds with the active pane a shade apart —
-# the terminal's nearest thing to opacity, real translucency being the
-# emulator's — the copy-mode/search highlight, messages, and the menus.
-# Semantic colors stay fixed: blocked-red and done-green mean the same thing
-# in every theme. Note the pane grounds replace the terminal's default
+# Themes are SESSION-scoped: each attached terminal can run its own. The
+# @theme_* options grid.tmux.conf's formats read are set on the session
+# (falling back to the conf's global defaults when unset), status/message
+# styles at session scope, and the window/pane styles on each of the
+# session's windows. Chrome and body both: title accent, the ? button, the
+# status ground, pane backgrounds (active a shade apart — the terminal's
+# nearest thing to opacity), the copy-mode/search highlight, and the menus.
+# Semantic colors stay fixed: blocked-red and done-green mean the same
+# thing in every theme. Pane grounds replace the terminal's default
 # background, so iTerm-level transparency stops showing through while a
 # theme is applied.
 #
-# The chosen name is written to $GRID_CONFIG/theme; grid.tmux.conf runs
-# `load` at server start so a restart comes back dressed.
+# Each session's choice is written to $GRID_CONFIG/theme.<session>; a
+# session-created hook in grid.tmux.conf runs `load <session>` so grids
+# come back dressed after a restart. A legacy single `theme` file (from
+# when themes were server-global) seeds sessions that have no file yet.
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -51,46 +55,59 @@ theme_colors() {
   esac
 }
 
-apply() {
-  name="$1"
+# sess_of_client <client> — the session a client is attached to.
+sess_of_client() {
+  tmux list-clients -F '#{client_name} #{session_name}' 2>/dev/null \
+    | awk -v c="$1" '$1 == c { print $2; exit }'
+}
+
+# fallback_session — when no session was passed (bare CLI use).
+fallback_session() {
+  tmux display-message -p '#{session_name}' 2>/dev/null
+}
+
+apply() { # apply <name> <session>
+  name="$1" sess="$2"
   colors=$(theme_colors "$name") || { echo "grid-theme: unknown theme '$name'" >&2; exit 1; }
   set -- $colors
-  tmux set-option -g @grid_theme   "$name"
-  tmux set-option -g @theme_accent "$1"
-  tmux set-option -g @theme_key    "$2"
-  tmux set-option -g @theme_bg     "$3"
-  tmux set-option -g @theme_fg     "$4"
-  tmux set-option -g status-style  "bg=$3,fg=$4"
-  # The grid body, not just the chrome. The active pane sits a shade apart
-  # from the rest — dimmed-vs-lit is the terminal's stand-in for opacity.
-  # Border styles are deliberately NOT touched: pane-state.sh owns those,
-  # and blocked-red must survive every theme.
-  tmux set-option -g window-style        "bg=$5,fg=$8"
-  tmux set-option -g window-active-style "bg=$6,fg=$8"
-  tmux set-option -g @theme_border       "$9"
-  tmux set-option -g mode-style          "bg=$7,fg=colour232"
-  tmux set-option -g message-style       "bg=$3,fg=$1"
-  tmux set-option -g menu-style          "bg=$3,fg=$4"
-  tmux set-option -g menu-selected-style "bg=$7,fg=colour232"
-  tmux set-option -g menu-border-style   "fg=$1,bg=$3"
+  tmux set-option -t "$sess" @grid_theme    "$name"
+  tmux set-option -t "$sess" @theme_accent  "$1"
+  tmux set-option -t "$sess" @theme_key     "$2"
+  tmux set-option -t "$sess" @theme_bg      "$3"
+  tmux set-option -t "$sess" @theme_fg      "$4"
+  tmux set-option -t "$sess" @theme_border  "$9"
+  tmux set-option -t "$sess" status-style   "bg=$3,fg=$4"
+  tmux set-option -t "$sess" message-style  "bg=$3,fg=$1"
+  # Window/pane styles are window options — dealt to each of the session's
+  # windows (a grid has one). Border styles are deliberately NOT touched:
+  # pane-state.sh owns those, and blocked-red must survive every theme.
+  for w in $(tmux list-windows -t "$sess" -F '#{window_id}' 2>/dev/null); do
+    tmux set-option -w -t "$w" window-style        "bg=$5,fg=$8"
+    tmux set-option -w -t "$w" window-active-style "bg=$6,fg=$8"
+    tmux set-option -w -t "$w" mode-style          "bg=$7,fg=colour232"
+    tmux set-option -w -t "$w" menu-style          "bg=$3,fg=$4"
+    tmux set-option -w -t "$w" menu-selected-style "bg=$7,fg=colour232"
+    tmux set-option -w -t "$w" menu-border-style   "fg=$1,bg=$3"
+  done
   mkdir -p "$GRID_CONFIG"
-  printf '%s\n' "$name" > "$GRID_CONFIG/theme"
+  printf '%s\n' "$name" > "$GRID_CONFIG/theme.$sess"
   tmux refresh-client -S 2>/dev/null
   # Visible receipt that a menu click landed — silent at server start (no
   # client to show it on) and during party mode (a toast every cycle is
   # noise, and the whole grid changing is receipt enough).
-  [ -n "${GRID_THEME_QUIET:-}" ] || tmux display-message -d 1200 "grid theme: $name" 2>/dev/null
+  [ -n "${GRID_THEME_QUIET:-}" ] || tmux display-message -d 1200 "grid theme ($sess): $name" 2>/dev/null
 }
 
-current() {
-  c=$(tmux show-options -gv @grid_theme 2>/dev/null)
+current() { # current <session>
+  c=$(tmux show-options -v -t "$1" @grid_theme 2>/dev/null)
+  [ -n "$c" ] || c=$(tmux show-options -gv @grid_theme 2>/dev/null)
   [ -n "$c" ] || c=grid
   printf '%s' "$c"
 }
 
-# step <1|-1> — the neighbor of the current theme in THEMES, wrapping.
+# step <1|-1> <session> — the neighbor of the session's theme, wrapping.
 step() {
-  echo "$THEMES" | awk -v cur="$(current)" -v d="$1" '{
+  echo "$THEMES" | awk -v cur="$(current "$2")" -v d="$1" '{
     for (i = 1; i <= NF; i++) if ($i == cur) {
       n = i + d; if (n < 1) n = NF; if (n > NF) n = 1; print $n; exit
     }
@@ -98,33 +115,50 @@ step() {
   }'
 }
 
-case "${1:-menu}" in
+mode="${1:-menu}"
+
+case "$mode" in
   apply)
-    apply "$2"
+    sess="${3:-$(fallback_session)}"
+    [ -n "$sess" ] && apply "$2" "$sess"
     ;;
   load)
-    saved=$(cat "$GRID_CONFIG/theme" 2>/dev/null || true)
-    theme_colors "${saved:-grid}" >/dev/null 2>&1 || saved=grid
-    apply "${saved:-grid}"
+    # With a session: dress that one from its saved file (legacy global
+    # file as seed, nothing saved = leave the conf defaults). Without:
+    # every current session — the conf runs this once at server start.
+    if [ -n "${2:-}" ]; then sessions="$2"; else
+      sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null)
+    fi
+    for sess in $sessions; do
+      saved=$(cat "$GRID_CONFIG/theme.$sess" 2>/dev/null)
+      [ -n "$saved" ] || saved=$(cat "$GRID_CONFIG/theme" 2>/dev/null)
+      [ -n "$saved" ] || continue
+      theme_colors "$saved" >/dev/null 2>&1 || continue
+      GRID_THEME_QUIET=1 apply "$saved" "$sess"
+    done
     ;;
   next|prev)
-    if [ "$1" = next ]; then n=$(step 1); else n=$(step -1); fi
-    apply "$n"
+    sess="${2:-$(fallback_session)}"
+    [ -n "$sess" ] || exit 0
+    if [ "$mode" = next ]; then n=$(step 1 "$sess"); else n=$(step -1 "$sess"); fi
+    apply "$n" "$sess"
     ;;
   party)
-    # Toggle: the loop keys off @grid_party each cycle, so clearing the
-    # option is all it takes to stop — no pid bookkeeping, worst case one
-    # final cycle. Whatever theme the music stops on is saved, like any
-    # other apply.
-    if [ -n "$(tmux show-options -gv @grid_party 2>/dev/null)" ]; then
-      tmux set-option -gu @grid_party
-      tmux display-message -d 1200 "grid: party's over" 2>/dev/null
+    # Toggle, per session: the loop keys off the session's @grid_party each
+    # cycle, so clearing the option is all it takes to stop — no pid
+    # bookkeeping, worst case one final cycle. Whatever theme the music
+    # stops on is saved, like any other apply.
+    sess="${2:-$(fallback_session)}"
+    [ -n "$sess" ] || exit 0
+    if [ -n "$(tmux show-options -v -t "$sess" @grid_party 2>/dev/null)" ]; then
+      tmux set-option -u -t "$sess" @grid_party
+      tmux display-message -d 1200 "grid: party's over in $sess" 2>/dev/null
     else
-      tmux set-option -g @grid_party 1
-      tmux display-message -d 1200 "grid: 🎉 party mode — click 🎉 again to stop" 2>/dev/null
+      tmux set-option -t "$sess" @grid_party 1
+      tmux display-message -d 1200 "grid: 🎉 party mode in $sess — click 🎉 again to stop" 2>/dev/null
       (
-        while [ -n "$(tmux show-options -gv @grid_party 2>/dev/null)" ]; do
-          GRID_THEME_QUIET=1 "$SCRIPT_DIR/grid-theme.sh" next
+        while [ -n "$(tmux show-options -v -t "$sess" @grid_party 2>/dev/null)" ]; do
+          GRID_THEME_QUIET=1 "$SCRIPT_DIR/grid-theme.sh" next "$sess"
           sleep 3
         done
       ) </dev/null >/dev/null 2>&1 &
@@ -132,31 +166,33 @@ case "${1:-menu}" in
     tmux refresh-client -S 2>/dev/null
     ;;
   menu)
-    # Explicit client — ideally the one that was clicked, passed down from
-    # the binding; run-shell has no client of its own and guessing sends
-    # the menu to the wrong terminal when several are attached. -M because
-    # menus not opened directly from a mouse binding ignore the mouse
-    # entirely without it (tmux(1)) — clicking a row did nothing. -O
-    # because mouse-mode menus otherwise close the instant the pointer
-    # moves or releases outside them — the menu flickered and vanished
-    # right after the chip click; with -O it stays until an actual click
-    # (an item chooses, outside dismisses).
+    # Client passed from the binding so the menu lands on the terminal that
+    # was clicked (run-shell has no client of its own; guessing sent menus
+    # to the wrong terminal). -M because menus not opened directly from a
+    # mouse binding ignore the mouse entirely (tmux(1)); -O because
+    # mouse-mode menus otherwise close the instant the pointer moves or
+    # releases outside them — the menu flickered and vanished right after
+    # the chip click. With both, it stays until an actual click: an item
+    # chooses, outside dismisses.
     client="${2:-}"
     [ -n "$client" ] || client=$(tmux list-clients -F '#{client_name}' 2>/dev/null | head -1)
-    cur=$(current)
+    sess="${3:-}"
+    [ -n "$sess" ] || sess=$(sess_of_client "$client")
+    [ -n "$sess" ] || sess=$(fallback_session)
+    cur=$(current "$sess")
     mark() { if [ "$cur" = "$1" ]; then printf '✓'; else printf ' '; fi; }
     # Built in a loop so adding a theme is one line in theme_colors plus a
-    # word in THEMES/MENU_KEYS, not a menu rewrite. Swatches use each theme's
-    # own accent, so the menu doubles as a preview.
-    cmd=(tmux display-menu -O -M ${client:+-c "$client"} -T '#[align=centre]grid theme')
+    # word in THEMES/MENU_KEYS, not a menu rewrite. Swatches use each
+    # theme's own accent, so the menu doubles as a preview.
+    cmd=(tmux display-menu -O -M ${client:+-c "$client"} -T "#[align=centre]$sess theme")
     i=1
     for t in $THEMES; do
       set -- $(theme_colors "$t")
       k=$(echo "$MENU_KEYS" | awk -v i="$i" '{ print $i }')
-      cmd+=("#[fg=$1]■ $t $(mark "$t")" "$k" "run-shell '$SCRIPT_DIR/grid-theme.sh apply $t'")
+      cmd+=("#[fg=$1]■ $t $(mark "$t")" "$k" "run-shell '$SCRIPT_DIR/grid-theme.sh apply $t $sess'")
       i=$((i + 1))
     done
-    cmd+=('' 'reset title to session name' t "set-option -F @grid_title '#{session_name}'")
+    cmd+=('' 'reset title to session name' t "set-option -t '$sess' -u @grid_title")
     "${cmd[@]}"
     ;;
 esac

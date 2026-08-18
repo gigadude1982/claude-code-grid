@@ -13,7 +13,14 @@
 # `tmux lock-server`, or "matrix rain" in the right-click pane menu.
 set -u
 
-accent=$(tmux show-options -gv @theme_accent 2>/dev/null)
+# Rain in the accent of THIS terminal's session — themes are per-session,
+# and the lock runs once per client. The client is found by matching our
+# tty (stdin is the client's terminal in the lock context).
+sess=$(tmux list-clients -F '#{client_tty} #{session_name}' 2>/dev/null \
+  | awk -v t="$(tty 2>/dev/null)" '$1 == t { print $2; exit }')
+accent=""
+[ -n "$sess" ] && accent=$(tmux show-options -v -t "$sess" @theme_accent 2>/dev/null)
+[ -n "$accent" ] || accent=$(tmux show-options -gv @theme_accent 2>/dev/null)
 accent=${accent#colour}
 case "$accent" in (*[!0-9]*|'') accent=46 ;; esac
 
