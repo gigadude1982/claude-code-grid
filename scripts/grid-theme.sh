@@ -76,9 +76,10 @@ apply() {
   mkdir -p "$GRID_CONFIG"
   printf '%s\n' "$name" > "$GRID_CONFIG/theme"
   tmux refresh-client -S 2>/dev/null
-  # Visible receipt that a menu click landed — silent at server start, when
-  # there's no client to show it on.
-  tmux display-message -d 1200 "grid theme: $name" 2>/dev/null
+  # Visible receipt that a menu click landed — silent at server start (no
+  # client to show it on) and during party mode (a toast every cycle is
+  # noise, and the whole grid changing is receipt enough).
+  [ -n "${GRID_THEME_QUIET:-}" ] || tmux display-message -d 1200 "grid theme: $name" 2>/dev/null
 }
 
 current() {
@@ -110,16 +111,40 @@ case "${1:-menu}" in
     if [ "$1" = next ]; then n=$(step 1); else n=$(step -1); fi
     apply "$n"
     ;;
+  party)
+    # Toggle: the loop keys off @grid_party each cycle, so clearing the
+    # option is all it takes to stop — no pid bookkeeping, worst case one
+    # final cycle. Whatever theme the music stops on is saved, like any
+    # other apply.
+    if [ -n "$(tmux show-options -gv @grid_party 2>/dev/null)" ]; then
+      tmux set-option -gu @grid_party
+      tmux display-message -d 1200 "grid: party's over" 2>/dev/null
+    else
+      tmux set-option -g @grid_party 1
+      tmux display-message -d 1200 "grid: 🎉 party mode — click 🎉 again to stop" 2>/dev/null
+      (
+        while [ -n "$(tmux show-options -gv @grid_party 2>/dev/null)" ]; do
+          GRID_THEME_QUIET=1 "$SCRIPT_DIR/grid-theme.sh" next
+          sleep 3
+        done
+      ) </dev/null >/dev/null 2>&1 &
+    fi
+    tmux refresh-client -S 2>/dev/null
+    ;;
   menu)
-    # Explicit client: run-shell from a binding (and the CLI) has no client
-    # of its own, and display-menu needs one to draw on.
-    client=$(tmux list-clients -F '#{client_name}' 2>/dev/null | head -1)
+    # Explicit client — ideally the one that was clicked, passed down from
+    # the binding; run-shell has no client of its own and guessing sends
+    # the menu to the wrong terminal when several are attached. -M below
+    # because menus not opened directly from a mouse binding ignore the
+    # mouse entirely without it (tmux(1)) — clicking a row did nothing.
+    client="${2:-}"
+    [ -n "$client" ] || client=$(tmux list-clients -F '#{client_name}' 2>/dev/null | head -1)
     cur=$(current)
     mark() { if [ "$cur" = "$1" ]; then printf '✓'; else printf ' '; fi; }
     # Built in a loop so adding a theme is one line in theme_colors plus a
     # word in THEMES/MENU_KEYS, not a menu rewrite. Swatches use each theme's
     # own accent, so the menu doubles as a preview.
-    cmd=(tmux display-menu ${client:+-c "$client"} -T '#[align=centre]grid theme')
+    cmd=(tmux display-menu -M ${client:+-c "$client"} -T '#[align=centre]grid theme')
     i=1
     for t in $THEMES; do
       set -- $(theme_colors "$t")

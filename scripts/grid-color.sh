@@ -30,11 +30,14 @@ case "$mode" in
     tmux refresh-client -S 2>/dev/null
     ;;
   menu)
-    # Explicit client for the same reason as grid-theme.sh: run-shell has none.
-    client=$(tmux list-clients -F '#{client_name}' 2>/dev/null | head -1)
+    # Client passed from the binding so the menu lands on the terminal that
+    # was clicked; -M so a menu opened via run-shell accepts mouse clicks
+    # at all (see grid-theme.sh).
+    client="${3:-}"
+    [ -n "$client" ] || client=$(tmux list-clients -F '#{client_name}' 2>/dev/null | head -1)
     names="blue purple orange green red cyan gold violet"
     i=1
-    cmd=(tmux display-menu ${client:+-c "$client"} -T "#[align=centre]$label")
+    cmd=(tmux display-menu -M ${client:+-c "$client"} -T "#[align=centre]$label")
     for c in $GRID_PALETTE; do
       n=$(echo "$names" | awk -v i="$i" '{ print $i }')
       cmd+=("#[fg=$c]■ $n" "$i" "run-shell '$SCRIPT_DIR/grid-color.sh set $pane $c'")

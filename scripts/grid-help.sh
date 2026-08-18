@@ -53,7 +53,7 @@ printf "   ${key}%-7s${r} %s\n" "title" "click = rename · right-click or the �
 printf "   ${key}%-7s${r} %s\n" "dots" "click a pane's ● in the title line to jump to it"
 printf "   ${key}%-7s${r} %s\n" "pane" "right-click a pane for its menu, its border for repo colours"
 printf "   ${key}%-7s${r} %s\n" "chips" "✚ add repo · ⎇ git (● = dirty count) · ▤ board · ✎ prompt · ⛶ zoom"
-printf "   ${key}%-7s${r} %s\n" "more" "🔔 mute 1h · ☔ or C-\\ rain (also 10m idle) · 🐇 pane that wants you · ⇄ cast"
+printf "   ${key}%-7s${r} %s\n" "more" "🎉 party · 🔔 mute 1h · ☔/C-\\ rain (10m idle too) · 🐇 neediest pane · ⇄ cast"
 
 printf '\n %sFROM THE SHELL%s\n' "$hd" "$r"
 printf "   %sgrid-add%s [repo]   %sgrid-drop%s   %sgrid-note%s \"…\"   %sgrid-board%s\n" \
