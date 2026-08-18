@@ -40,6 +40,7 @@ case "$range" in
   party)  "$SCRIPT_DIR/grid-theme.sh" party "$session" ;;
   add)    popup '60%' '60%' "$SCRIPT_DIR/grid-add.sh" ;;
   git)    popup '80%' '80%' "$SCRIPT_DIR/grid-git.sh" ;;
+  cost)   popup 66 20 "$SCRIPT_DIR/grid-cost.sh popup '$session'" ;;
   board)  popup '80%' '70%' "$SCRIPT_DIR/grid-board.sh show" ;;
   prompt) popup '70%' '60%' "$SCRIPT_DIR/grid-prompt.sh current" ;;
   zoom)   tmux resize-pane -Z -t "$pane" ;;
