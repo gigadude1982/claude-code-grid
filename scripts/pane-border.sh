@@ -1,5 +1,6 @@
 #!/bin/bash
-# pane-border.sh <@repo> <@repo_color> <pane_current_path> <pane_title> [@state] [@state_since]
+# pane-border.sh <@repo> <@repo_color> <pane_current_path> <pane_title>
+#                [@state] [@state_since] [@cl_model] [@cl_cost] [@cl_rate]
 #
 # Renders one pane's border label. Called from pane-border-format in
 # tmux/grid.tmux.conf via #() — tmux re-runs it every status-interval, and
@@ -18,6 +19,7 @@
 # Falls back to the plain pane_title for panes without @repo set (i.e. any
 # tmux session that isn't a claude grid).
 repo="$1" color="$2" path="$3" title="$4" state="${5:-}" since="${6:-}"
+model="${7:-}" cost="${8:-}" rate="${9:-}"
 
 if [ -z "$repo" ]; then
   printf ' %s ' "$title"
@@ -54,6 +56,15 @@ esac
 printf '#[fg=%s,bold]%s #[default]' "${color:-colour250}" "$repo"
 [ -n "$branch" ]   && printf '#[fg=colour244](%s) ' "$branch"
 [ -n "$gitstate" ] && printf '%s ' "$gitstate"
+
+# Claude session stats, stamped as @cl_* pane options by claude-status-line's
+# statusline.sh: which model runs here, what it has cost, how fast it burns.
+[ -n "$model" ] && printf '#[fg=colour244]◆%s ' "$model"
+if [ -n "$cost" ]; then
+  printf '#[fg=colour178]$%s' "$cost"
+  [ -n "$rate" ] && printf '#[fg=colour244]·$%s/hr' "$rate"
+  printf ' '
+fi
 if [ -n "$elapsed" ]; then
   # Match the glyph's urgency: a pane that's been blocked on you for 8
   # minutes should read louder than one that's been working for 8 minutes.
