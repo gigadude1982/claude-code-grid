@@ -14,7 +14,8 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/grid-lib.sh"
 
-THEMES="grid synthwave matrix amber"
+THEMES="grid synthwave matrix amber nord dracula gruvbox ocean"
+MENU_KEYS="g s m a n d v o"
 
 # accent key bg fg
 theme_colors() {
@@ -23,6 +24,10 @@ theme_colors() {
     synthwave) echo "colour201 colour51 colour53 colour183" ;;
     matrix)    echo "colour46 colour118 colour232 colour71" ;;
     amber)     echo "colour214 colour208 colour234 colour180" ;;
+    nord)      echo "colour110 colour222 colour236 colour252" ;;
+    dracula)   echo "colour141 colour228 colour235 colour253" ;;
+    gruvbox)   echo "colour208 colour214 colour235 colour223" ;;
+    ocean)     echo "colour39 colour86 colour17 colour153" ;;
     *)         return 1 ;;
   esac
 }
@@ -78,12 +83,18 @@ case "${1:-menu}" in
     client=$(tmux list-clients -F '#{client_name}' 2>/dev/null | head -1)
     cur=$(current)
     mark() { if [ "$cur" = "$1" ]; then printf '✓'; else printf ' '; fi; }
-    tmux display-menu ${client:+-c "$client"} -T '#[align=centre]grid theme' \
-      "#[fg=colour45]■ grid blue $(mark grid)"       g "run-shell '$SCRIPT_DIR/grid-theme.sh apply grid'" \
-      "#[fg=colour201]■ synthwave $(mark synthwave)" s "run-shell '$SCRIPT_DIR/grid-theme.sh apply synthwave'" \
-      "#[fg=colour46]■ matrix $(mark matrix)"        m "run-shell '$SCRIPT_DIR/grid-theme.sh apply matrix'" \
-      "#[fg=colour214]■ amber $(mark amber)"         a "run-shell '$SCRIPT_DIR/grid-theme.sh apply amber'" \
-      '' \
-      'reset title to session name' t "set-option -F @grid_title '#{session_name}'"
+    # Built in a loop so adding a theme is one line in theme_colors plus a
+    # word in THEMES/MENU_KEYS, not a menu rewrite. Swatches use each theme's
+    # own accent, so the menu doubles as a preview.
+    cmd=(tmux display-menu ${client:+-c "$client"} -T '#[align=centre]grid theme')
+    i=1
+    for t in $THEMES; do
+      set -- $(theme_colors "$t")
+      k=$(echo "$MENU_KEYS" | awk -v i="$i" '{ print $i }')
+      cmd+=("#[fg=$1]■ $t $(mark "$t")" "$k" "run-shell '$SCRIPT_DIR/grid-theme.sh apply $t'")
+      i=$((i + 1))
+    done
+    cmd+=('' 'reset title to session name' t "set-option -F @grid_title '#{session_name}'")
+    "${cmd[@]}"
     ;;
 esac
