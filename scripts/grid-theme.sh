@@ -134,9 +134,13 @@ case "${1:-menu}" in
   menu)
     # Explicit client — ideally the one that was clicked, passed down from
     # the binding; run-shell has no client of its own and guessing sends
-    # the menu to the wrong terminal when several are attached. -M below
-    # because menus not opened directly from a mouse binding ignore the
-    # mouse entirely without it (tmux(1)) — clicking a row did nothing.
+    # the menu to the wrong terminal when several are attached. -M because
+    # menus not opened directly from a mouse binding ignore the mouse
+    # entirely without it (tmux(1)) — clicking a row did nothing. -O
+    # because mouse-mode menus otherwise close the instant the pointer
+    # moves or releases outside them — the menu flickered and vanished
+    # right after the chip click; with -O it stays until an actual click
+    # (an item chooses, outside dismisses).
     client="${2:-}"
     [ -n "$client" ] || client=$(tmux list-clients -F '#{client_name}' 2>/dev/null | head -1)
     cur=$(current)
@@ -144,7 +148,7 @@ case "${1:-menu}" in
     # Built in a loop so adding a theme is one line in theme_colors plus a
     # word in THEMES/MENU_KEYS, not a menu rewrite. Swatches use each theme's
     # own accent, so the menu doubles as a preview.
-    cmd=(tmux display-menu -M ${client:+-c "$client"} -T '#[align=centre]grid theme')
+    cmd=(tmux display-menu -O -M ${client:+-c "$client"} -T '#[align=centre]grid theme')
     i=1
     for t in $THEMES; do
       set -- $(theme_colors "$t")
