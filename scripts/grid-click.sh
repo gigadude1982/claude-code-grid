@@ -36,8 +36,8 @@ case "$range" in
   rain)   tmux lock-server ;;
   next)   "$SCRIPT_DIR/grid-next.sh" "$session" ;;
   bcast)  tmux set-window-option -t "$pane" synchronize-panes ;;
-  theme)  "$SCRIPT_DIR/grid-theme.sh" menu "$client" ;;
-  party)  "$SCRIPT_DIR/grid-theme.sh" party ;;
+  theme)  "$SCRIPT_DIR/grid-theme.sh" menu "$client" "$session" ;;
+  party)  "$SCRIPT_DIR/grid-theme.sh" party "$session" ;;
   add)    popup '60%' '60%' "$SCRIPT_DIR/grid-add.sh" ;;
   git)    popup '80%' '80%' "$SCRIPT_DIR/grid-git.sh" ;;
   board)  popup '80%' '70%' "$SCRIPT_DIR/grid-board.sh show" ;;
