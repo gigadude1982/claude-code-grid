@@ -19,7 +19,7 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/grid-lib.sh"
 
-THEMES="grid synthwave matrix amber nord dracula gruvbox ocean"
+THEMES="grid synthwave matrix amber nord nosferatu gruvbox ocean"
 MENU_KEYS="g s m a n d v o"
 
 # accent key bg fg pane-bg pane-active-bg highlight pane-fg border
@@ -32,13 +32,19 @@ MENU_KEYS="g s m a n d v o"
 theme_colors() {
   case "$1" in
     grid)      echo "colour45 colour221 colour233 colour250 colour232 colour234 colour45 default colour240" ;;
-    synthwave) echo "colour201 colour51 colour53 colour183 colour232 colour235 colour201 default colour240" ;;
+    # synthwave spreads the whole neon rack: magenta title, cyan ?, yellow
+    # status text, lime pane text, orange highlight + frame, purple ground.
+    synthwave) echo "colour201 colour51 colour53 colour228 colour232 colour235 colour208 colour118 colour208" ;;
     matrix)    echo "colour46 colour118 colour16 colour255 colour16 colour232 colour46 colour46 colour255" ;;
-    amber)     echo "colour214 colour208 colour234 colour180 colour232 colour58 colour214 default colour240" ;;
+    amber)     echo "colour214 colour208 colour234 colour222 colour232 colour58 colour214 default colour137" ;;
     nord)      echo "colour110 colour222 colour236 colour252 colour234 colour236 colour110 default colour240" ;;
-    dracula)   echo "colour141 colour228 colour235 colour253 colour233 colour235 colour141 default colour240" ;;
-    gruvbox)   echo "colour208 colour214 colour235 colour223 colour234 colour236 colour208 default colour240" ;;
-    ocean)     echo "colour39 colour86 colour17 colour153 colour232 colour17 colour39 default colour240" ;;
+    # The colorless vampire: black grounds, red accents, white ?, gray text
+    # and frame. `dracula` stays as an alias so a saved theme file from
+    # before the rename still loads.
+    nosferatu|dracula) echo "colour160 colour255 colour232 colour250 colour16 colour233 colour160 default colour245" ;;
+    gruvbox)   echo "colour208 colour214 colour235 colour223 colour234 colour236 colour208 default colour137" ;;
+    # cyan-on-blue: navy grounds, cyan default text, pale-cyan chrome.
+    ocean)     echo "colour45 colour87 colour18 colour123 colour17 colour18 colour45 colour51 colour39" ;;
     *)         return 1 ;;
   esac
 }
@@ -95,6 +101,7 @@ case "${1:-menu}" in
     ;;
   load)
     saved=$(cat "$GRID_CONFIG/theme" 2>/dev/null || true)
+    [ "$saved" = dracula ] && saved=nosferatu
     theme_colors "${saved:-grid}" >/dev/null 2>&1 || saved=grid
     apply "${saved:-grid}"
     ;;
