@@ -25,6 +25,17 @@ TN=/opt/homebrew/bin/terminal-notifier
 GRID_CONFIG="${GRID_CONFIG:-$HOME/.config/claude-code-grid}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Quiet hours: the 🔔 header chip parks an expiry epoch in @grid_mute; while
+# it's in the future every banner and push is swallowed. An expired value is
+# cleared here, so the chip flips back to 🔔 on its own.
+mute=$(tmux show-options -gv @grid_mute 2>/dev/null)
+if [ -n "$mute" ]; then
+  if [ "$(date +%s)" -lt "$mute" ] 2>/dev/null; then
+    exit 0
+  fi
+  tmux set-option -gu @grid_mute 2>/dev/null
+fi
+
 event=$(printf '%s' "$input" | jq -r '.hook_event_name // ""' 2>/dev/null)
 cwd=$(printf '%s' "$input" | jq -r '.cwd // ""' 2>/dev/null)
 msg=$(printf '%s' "$input" | jq -r '.message // ""' 2>/dev/null)
