@@ -23,8 +23,8 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/grid-lib.sh"
 
-THEMES="grid synthwave matrix amber nord dracula nosferatu gruvbox ocean"
-MENU_KEYS="g s m a n d f v o"
+THEMES="grid synthwave matrix amber nord dracula nosferatu gruvbox ocean tokyo solarized cyberpunk ember forest"
+MENU_KEYS="g s m a n d f v o t l c e b"
 
 # accent key bg fg pane-bg pane-active-bg highlight pane-fg border
 #
@@ -51,6 +51,15 @@ theme_colors() {
     gruvbox)   echo "colour214 colour208 colour235 colour223 colour234 colour236 colour214 colour208 colour137" ;;
     # cyan-on-blue: navy grounds, cyan default text, pale-cyan chrome.
     ocean)     echo "colour45 colour87 colour18 colour123 colour17 colour18 colour45 colour51 colour39" ;;
+    # night-city blues with a purple highlight.
+    tokyo)     echo "colour111 colour149 colour234 colour146 colour233 colour235 colour141 default colour60" ;;
+    solarized) echo "colour33 colour136 colour235 colour245 colour234 colour236 colour33 default colour240" ;;
+    # hot pink and acid yellow on black.
+    cyberpunk) echo "colour198 colour226 colour232 colour123 colour232 colour234 colour226 default colour198" ;;
+    # coals: orange accents, the active pane smoulders dark red.
+    ember)     echo "colour202 colour220 colour233 colour223 colour232 colour52 colour202 default colour130" ;;
+    # greens on loam; the active pane is the canopy.
+    forest)    echo "colour114 colour178 colour234 colour151 colour232 colour22 colour114 default colour65" ;;
     *)         return 1 ;;
   esac
 }
@@ -120,7 +129,11 @@ mode="${1:-menu}"
 case "$mode" in
   apply)
     sess="${3:-$(fallback_session)}"
-    [ -n "$sess" ] && apply "$2" "$sess"
+    [ -n "$sess" ] || exit 0
+    # An explicit pick ends the party for that session — only the party
+    # loop itself (marked by GRID_THEME_QUIET) may keep cycling.
+    [ -n "${GRID_THEME_QUIET:-}" ] || tmux set-option -u -t "$sess" @grid_party 2>/dev/null
+    apply "$2" "$sess"
     ;;
   load)
     # With a session: dress that one from its saved file (legacy global
@@ -140,6 +153,8 @@ case "$mode" in
   next|prev)
     sess="${2:-$(fallback_session)}"
     [ -n "$sess" ] || exit 0
+    # Scrolling is an explicit pick too: take the wheel, stop the party.
+    [ -n "${GRID_THEME_QUIET:-}" ] || tmux set-option -u -t "$sess" @grid_party 2>/dev/null
     if [ "$mode" = next ]; then n=$(step 1 "$sess"); else n=$(step -1 "$sess"); fi
     apply "$n" "$sess"
     ;;
@@ -192,7 +207,7 @@ case "$mode" in
       cmd+=("#[fg=$1]■ $t $(mark "$t")" "$k" "run-shell '$SCRIPT_DIR/grid-theme.sh apply $t $sess'")
       i=$((i + 1))
     done
-    cmd+=('' 'reset title to session name' t "set-option -t '$sess' -u @grid_title")
+    cmd+=('' 'reset title to session name' r "set-option -t '$sess' -u @grid_title")
     "${cmd[@]}"
     ;;
 esac
