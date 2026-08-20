@@ -20,8 +20,14 @@ set -u
 # tmux for the current session before falling back to the global option,
 # which on a themed grid only holds the conf's default and rains a colour
 # no chip on screen is wearing.
+#
+# `tty` runs BEFORE the pipeline, deliberately. Expanding it inside the
+# awk argument puts the command substitution in the pipeline's second
+# element, whose stdin is the pipe — `tty` answers "not a tty" there and
+# the match never fires.
+mytty=$(tty 2>/dev/null)
 sess=$(tmux list-clients -F '#{client_tty} #{session_name}' 2>/dev/null \
-  | awk -v t="$(tty 2>/dev/null)" '$1 == t { print $2; exit }')
+  | awk -v t="$mytty" '$1 == t { print $2; exit }')
 [ -n "$sess" ] || sess=$(tmux display-message -p '#{session_name}' 2>/dev/null)
 accent=""
 [ -n "$sess" ] && accent=$(tmux show-options -v -t "$sess" @theme_accent 2>/dev/null)
