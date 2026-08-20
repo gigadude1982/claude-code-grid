@@ -15,9 +15,14 @@ set -u
 
 # Rain in the accent of THIS terminal's session — themes are per-session,
 # and the lock runs once per client. The client is found by matching our
-# tty (stdin is the client's terminal in the lock context).
+# tty (stdin is the client's terminal in the lock context); when that comes
+# up empty — no tty to read, a client tmux lists under another name — ask
+# tmux for the current session before falling back to the global option,
+# which on a themed grid only holds the conf's default and rains a colour
+# no chip on screen is wearing.
 sess=$(tmux list-clients -F '#{client_tty} #{session_name}' 2>/dev/null \
   | awk -v t="$(tty 2>/dev/null)" '$1 == t { print $2; exit }')
+[ -n "$sess" ] || sess=$(tmux display-message -p '#{session_name}' 2>/dev/null)
 accent=""
 [ -n "$sess" ] && accent=$(tmux show-options -v -t "$sess" @theme_accent 2>/dev/null)
 [ -n "$accent" ] || accent=$(tmux show-options -gv @theme_accent 2>/dev/null)
