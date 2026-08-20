@@ -14,22 +14,35 @@
 set -u
 
 # Rain in the accent of THIS terminal's session — themes are per-session,
-# and the lock runs once per client. The client is found by matching our
-# tty (stdin is the client's terminal in the lock context); when that comes
-# up empty — no tty to read, a client tmux lists under another name — ask
-# tmux for the current session before falling back to the global option,
-# which on a themed grid only holds the conf's default and rains a colour
-# no chip on screen is wearing.
+# and the lock runs once per client. Our tty names the client: stdin is the
+# client's terminal in the lock context.
+#
+# The session is read off `session_attached_list`, NOT `list-clients`.
+# Locking a client sets its suspended flag, and list-clients hides
+# suspended clients — so the tty match that used to live here could never
+# fire from inside the lock command. It fell through every time to the
+# untargeted `display-message`, which answers with the server's *current*
+# session: whichever terminal you were last typing in when the idle one
+# locked. That is the colour crossing terminals. session_attached_list
+# applies no such filter and still names us. (`display-message -c` is no
+# help either: -c steers #{client_*} only, and #{@theme_accent} resolves
+# against the current session regardless.)
 #
 # `tty` runs BEFORE the pipeline, deliberately. Expanding it inside the
 # awk argument puts the command substitution in the pipeline's second
 # element, whose stdin is the pipe — `tty` answers "not a tty" there and
 # the match never fires.
+#
+# Fallbacks, for when there is no tty or no such format (tmux < 3.1): the
+# current session, then the global option — which on a themed grid only
+# holds the conf's default and rains a colour no chip on screen is wearing.
 mytty=$(tty 2>/dev/null)
-sess=$(tmux list-clients -F '#{client_tty} #{session_name}' 2>/dev/null \
-  | awk -v t="$mytty" '$1 == t { print $2; exit }')
+case "$mytty" in (/dev/*) ;; (*) mytty='' ;; esac
+sess=''
+[ -n "$mytty" ] && sess=$(tmux list-sessions -F '#{session_name} #{session_attached_list}' 2>/dev/null \
+  | awk -v t="$mytty" '{ n = split($2, a, ","); for (i = 1; i <= n; i++) if (a[i] == t) { print $1; exit } }')
 [ -n "$sess" ] || sess=$(tmux display-message -p '#{session_name}' 2>/dev/null)
-accent=""
+accent=''
 [ -n "$sess" ] && accent=$(tmux show-options -v -t "$sess" @theme_accent 2>/dev/null)
 [ -n "$accent" ] || accent=$(tmux show-options -gv @theme_accent 2>/dev/null)
 accent=${accent#colour}
@@ -42,6 +55,8 @@ GLYPHS=(ｱ ｲ ｳ ｴ ｵ ｶ ｷ ｸ ｹ ｺ ｻ ｼ ｽ ｾ ｿ ﾀ ﾁ ﾂ 
 # Size from the tty on stdin — tput can't reach the client's tty in the
 # lock-command context and quietly reports 80x24, which painted the rain
 # into the screen's first quadrant. stty asks the fd the keys arrive on.
+# The tmux fallback is last-ditch and unavoidably untargeted — it reports
+# the *current* client, which on a multi-terminal grid may not be us.
 size=$(stty size 2>/dev/null)
 rows=${size%% *}
 cols=${size##* }
