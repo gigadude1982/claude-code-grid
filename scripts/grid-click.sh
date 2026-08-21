@@ -1,6 +1,6 @@
 #!/bin/bash
-# grid-click.sh <range> <session> <pane> <client> — the title line's click
-# dispatcher.
+# grid-click.sh <range> <session> <pane> <client> — the grid's action
+# dispatcher, shared by the title line's chips and the prefix keys.
 #
 # One MouseDown1Status binding funnels every chip here instead of growing a
 # ten-deep if-shell chain in grid.tmux.conf. Two cases stay native in the
@@ -10,6 +10,14 @@
 # with several terminals attached, session/pane/client name the grid that
 # was actually clicked — never "the first client", which sent popups to
 # whichever terminal happened to be listed first.
+#
+# The prefix keys route through here too, and not just for tidiness: a popup
+# needs to be told which session and pane it belongs to, and the direct
+# spelling `display-popup -e "GRID_SESSION=#{session_name}"` silently fails —
+# tmux does NOT expand formats in -e values, so the script inside the popup
+# gets the literal "#{session_name}" and finds no grid. `run-shell` does
+# expand its command, so the values arrive here already resolved and the
+# popup is opened below with real ones.
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,7 +40,10 @@ case "$range" in
     tmux command-prompt ${client:+-t "$client"} -I "$cur" -p 'grid title:' \
       "set-option -t '$session' @grid_title '%%'"
     ;;
-  help)   popup 84 41 "$SCRIPT_DIR/grid-help.sh" ;;
+  # Absolute, and sized to the sheet: it is 41 lines by 89 columns, and a
+  # popup only gets height-2 usable rows. Undersize it and the sheet's own
+  # title scrolls off the top before you can read it.
+  help)   popup 92 44 "$SCRIPT_DIR/grid-help.sh" ;;
   rain)   tmux lock-server ;;
   next)   "$SCRIPT_DIR/grid-next.sh" "$session" ;;
   bcast)  tmux set-window-option -t "$pane" synchronize-panes ;;
@@ -41,8 +52,13 @@ case "$range" in
   add)    popup '60%' '60%' "$SCRIPT_DIR/grid-add.sh" ;;
   git)    popup '80%' '80%' "$SCRIPT_DIR/grid-git.sh" ;;
   cost)   popup 66 20 "$SCRIPT_DIR/grid-cost.sh popup '$session'" ;;
+  log)    popup '80%' '80%' "$SCRIPT_DIR/grid-log.sh" ;;
   board)  popup '80%' '70%' "$SCRIPT_DIR/grid-board.sh show" ;;
   prompt) popup '70%' '60%' "$SCRIPT_DIR/grid-prompt.sh current" ;;
+  # prefix+P: the same picker, delivered to every marked pane (or to all of
+  # them when nothing is marked). No chip of its own — marking is a pane
+  # gesture, so this one is keyboard/menu only.
+  promptmarked) popup '70%' '60%' "$SCRIPT_DIR/grid-prompt.sh marked" ;;
   zoom)   tmux resize-pane -Z -t "$pane" ;;
   mute)
     # Quiet hours: park an expiry epoch in @grid_mute. claude-notify.sh
