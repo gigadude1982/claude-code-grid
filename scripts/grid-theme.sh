@@ -97,6 +97,11 @@ apply() { # apply <name> <session>
     tmux set-option -w -t "$w" menu-style          "bg=$3,fg=$4"
     tmux set-option -w -t "$w" menu-selected-style "bg=$7,fg=colour232"
     tmux set-option -w -t "$w" menu-border-style   "fg=$1,bg=$3"
+    # The one border style a theme does own: the active pane's frame follows
+    # @theme_accent while its pane is in a neutral state, so it has to be
+    # re-derived when the accent changes underneath it. pane-state.sh keeps
+    # the semantic colours, which is why this can't just be set to "$1".
+    "$SCRIPT_DIR/pane-state.sh" --active "$w" 2>/dev/null
   done
   mkdir -p "$GRID_CONFIG"
   printf '%s\n' "$name" > "$GRID_CONFIG/theme.$sess"
