@@ -25,6 +25,23 @@ cache="${tmpdir%/}/.claude_rl_$(id -u)_${profile}"
 IFS=$'\t' read -r five_pct five_rst seven_pct seven_rst cached_ts <"$cache"
 [ -n "$five_pct" ] || exit 0
 
+# The cache carries whatever the API returned, which is a float — and one
+# that has been through a division, so it arrives as 28.999999999999996.
+# Round on the way in rather than at each use: the status bar has no room to
+# spell that out, and every threshold test below is an integer comparison
+# that a non-integer silently loses (`[ 28.99 -ge 85 ]` errors and takes the
+# else branch, so a maxed-out window would have painted green).
+# Anything that isn't a bare number is passed through untouched — printf
+# would "round" it to 0 and report a full window as empty.
+round_pct() {
+  case "$1" in
+    ''|*[!0-9.]*) printf '%s' "$1" ;;
+    *)            printf '%.0f' "$1" ;;
+  esac
+}
+five_pct=$(round_pct "$five_pct")
+[ -n "$seven_pct" ] && seven_pct=$(round_pct "$seven_pct")
+
 color_for() {
   if [ "$1" -ge 85 ] 2>/dev/null; then echo "colour203"
   elif [ "$1" -ge 60 ] 2>/dev/null; then echo "colour221"
