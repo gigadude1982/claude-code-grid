@@ -29,8 +29,56 @@
 
 state="${1:-idle}"
 
-[ -n "${TMUX_PANE:-}" ] || exit 0
 command -v tmux >/dev/null 2>&1 || exit 0
+
+# ── the active pane's frame ──────────────────────────────────────────────────
+# pane-border-style is per-pane, but tmux paints whichever pane is *active*
+# from the window's pane-active-border-style — one option for the whole
+# window. Left alone it stays tmux's stock green, so the pane you are
+# actually sitting in ignored its own state and wore the colour this grid
+# uses to mean "finished its turn". Recompute it for the active pane here,
+# and again on after-select-pane (see grid.tmux.conf) when focus moves.
+#
+# Neutral states take the theme's accent rather than the frame tint the
+# inactive panes get: the active border doubles as the "you are here" marker,
+# and dropping it to the same grey as everything else throws that away.
+# waiting and done keep their semantic colours — that is the entire point.
+active_border() { # active_border <pane-in-the-window>
+  _win=$(tmux display-message -p -t "$1" '#{window_id}' 2>/dev/null) || return 0
+  [ -n "$_win" ] || return 0
+
+  # -t <window> resolves to that window's active pane.
+  _apane=$(tmux display-message -p -t "$_win" '#{pane_id}' 2>/dev/null)
+  [ -n "$_apane" ] || return 0
+
+  # Not a grid pane? Hand the option back rather than leaving an ordinary
+  # tmux window wearing a colour this script picked.
+  if [ -z "$(tmux display-message -p -t "$_apane" '#{@repo}' 2>/dev/null)" ]; then
+    tmux set-option -wu -t "$_win" pane-active-border-style 2>/dev/null
+    return 0
+  fi
+
+  _astate=$(tmux display-message -p -t "$_apane" '#{@state}' 2>/dev/null)
+  _accent=$(tmux show-options -v -t "$_apane" @theme_accent 2>/dev/null)
+  [ -n "$_accent" ] || _accent=$(tmux show-options -gv @theme_accent 2>/dev/null)
+  [ -n "$_accent" ] || _accent=colour45
+
+  case "$_astate" in
+    waiting) _style="fg=colour203,bold" ;;
+    done)    _style="fg=colour114,bold" ;;
+    *)       _style="fg=$_accent,bold" ;;
+  esac
+  tmux set-option -w -t "$_win" pane-active-border-style "$_style" 2>/dev/null
+}
+
+# after-select-pane fires as a tmux hook, not as a Claude hook, so there is no
+# $TMUX_PANE to inherit — the binding passes the pane in instead.
+if [ "$state" = "--active" ]; then
+  [ -n "${2:-}" ] && active_border "$2"
+  exit 0
+fi
+
+[ -n "${TMUX_PANE:-}" ] || exit 0
 
 # Only grid panes carry @repo; leave ordinary tmux panes alone so a stray
 # hook in a non-grid session can't start restyling borders.
@@ -64,6 +112,15 @@ case "$state" in
   *)       style="fg=$tint" ;;            # working/idle — the theme's frame
 esac
 tmux set-option -p -t "$TMUX_PANE" pane-border-style "$style" 2>/dev/null
+
+# Only when this pane both changed state and is the one being looked at:
+# a transition three panes away can't alter the active frame, and PreToolUse
+# fires often enough that spending four tmux calls per tool call to prove
+# that would be a poor trade.
+if [ "$changed" = "1" ] \
+   && [ "$(tmux display-message -p -t "$TMUX_PANE" '#{pane_active}' 2>/dev/null)" = "1" ]; then
+  active_border "$TMUX_PANE"
+fi
 
 # Repaint immediately rather than waiting up to status-interval for the next
 # border refresh — the whole point is that the change is instant. Only on an

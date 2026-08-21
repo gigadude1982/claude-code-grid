@@ -169,10 +169,12 @@ source ~/dev/claude-code-grid/zsh/grid.zsh
 - **The grid is a dashboard.** Claude Code hooks report each session's state
   into tmux pane options (`scripts/pane-state.sh`), and the border renders it:
   glyph, elapsed time, and a frame that turns red the moment a pane blocks on
-  you. (The frame, not the glyph, is the part the focused pane doesn't get —
-  tmux paints the active pane's border from `pane-active-border-style`, so
-  the pane you're already looking at keeps its own colour.) The status bar
-  carries the rollup (`▲1 ✔1 ▶1`). With four sessions the
+  you — the focused pane included, which tmux makes awkward: that one border
+  comes from the window-scoped `pane-active-border-style`, so it gets
+  re-derived on every focus change and on any state change in the pane you're
+  in. A focused pane in a neutral state wears the theme's accent rather than
+  the frame tint, so "you are here" still reads at a glance.
+  The status bar carries the rollup (`▲1 ✔1 ▶1`). With four sessions the
   scarce resource is your attention, not screen space — `prefix+n` (and the
   `🐇` chip) turns that into a work queue.
 - **Pane borders that stay put** — repo name (per-repo color), current branch,
@@ -295,6 +297,13 @@ board), `<session>.log` (prune decisions), `prompts/` (prompt library),
   from the command line.)
 - `tmux set-option -p` without `-t` targets the window's _active_ pane, not
   the pane running the command — always pass `-t "$TMUX_PANE"`.
+- **`pane-border-style` is per-pane but `pane-active-border-style` is
+  per-window**, so the pane you are focused on does not wear the style its
+  own state set — it wears one option shared by the whole window, which
+  defaults to green and therefore said "finished its turn" about whatever
+  pane you happened to be in. There is no per-pane version of it: it has to
+  be re-derived from the active pane, both when focus moves
+  (`after-select-pane`) and when that pane changes state.
 - **`#()` in a format is cached** and only re-runs on `status-interval`, so a
   state glyph rendered by a shell script lags the actual transition by up to
   15s. The glyph is drawn with native `#{?...}` conditionals on `@state`
