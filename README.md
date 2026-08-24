@@ -61,6 +61,7 @@ README lookup.
 | key                               | what it does                                                                     |
 | --------------------------------- | -------------------------------------------------------------------------------- |
 | `prefix+?`                        | cheatsheet popup — every key below, plus what the border glyphs mean             |
+| `prefix+Esc`                      | **the main menu** — a btop-style overlay: OPTIONS / HELP / QUIT in block glyphs under the logo. Arrows or click to choose; quit confirms, then kills the grid (worktrees safe-pruned, same as `pdev-stop`) |
 | `prefix+n`                        | **jump to the pane that most wants you** — blocked first, longest-waiting first; repeat to cycle |
 | `prefix+m`                        | mark/unmark this pane for targeted broadcast (`⦿` in its border)                 |
 | `prefix+p` / `prefix+P`           | pick a saved prompt → send to this pane / to the marked panes (all, if none marked) |
@@ -89,6 +90,7 @@ has a cost stamped on it.
 | the dots (centre)    | jump to that pane — colored like the border glyphs       | amber + blinking = that pane is low on context |
 | `⛶ 🔔 ☔ 🐇 🎉 ⇄` (right) | zoom · mute notifications 1h · rain now · jump to the neediest pane · party mode · broadcast | `🔕` while muted; the chip flips back on its own |
 | `theme: <name>`      | the theme menu                                           |                                               |
+| `≡`                  | the main menu — options / help / quit                    | options gathers theme, title, mute, party, broadcast, rain delay in one place |
 | `?`                  | the cheatsheet                                           |                                               |
 | a pane               | right-click for every grid action on that pane           |                                               |
 | a pane's border      | right-click to recolor that repo (remembered across launches) |                                          |
@@ -261,6 +263,8 @@ scripts/         the engine + helpers (all standalone, no state in-repo)
   grid-board.sh    shared cross-repo board (note / show / SessionStart inject)
   grid-git.sh      cross-repo git popup; grid-log.sh → the prune log popup
   grid-help.sh     prefix+? cheatsheet
+  grid-menu.sh     prefix+Esc / ≡ main menu — OPTIONS / HELP / QUIT, btop-style
+  grid-options.sh  the options screen: theme, title, mute, party, broadcast, rain
   grid-restore.sh  post-reboot relaunch with --continue
 
   claude-notify.sh      Claude hook → macOS banner + ntfy push, classified by
@@ -320,7 +324,7 @@ board), `<session>.log` (prune decisions), `prompts/` (prompt library),
   `#{session_name}` / `#{client_name}` at press time and pass them in as
   arguments.
 - **A popup sized from a percentage will clip its own content.** The
-  cheatsheet is a fixed 41 lines by 89 columns and a popup only gets
+  cheatsheet is a fixed 43 lines by 89 columns and a popup only gets
   `height - 2` usable rows, so it's sized absolutely — undersize it and the
   sheet's own title scrolls off the top before you can read it.
 - **The plan-usage cache holds floats.** `28.999999999999996` doesn't fit the
