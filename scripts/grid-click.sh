@@ -40,10 +40,15 @@ case "$range" in
     tmux command-prompt ${client:+-t "$client"} -I "$cur" -p 'grid title:' \
       "set-option -t '$session' @grid_title '%%'"
     ;;
-  # Absolute, and sized to the sheet: it is 41 lines by 89 columns, and a
+  # Absolute, and sized to the sheet: it is 43 lines by 89 columns, and a
   # popup only gets height-2 usable rows. Undersize it and the sheet's own
   # title scrolls off the top before you can read it.
-  help)   popup 92 44 "$SCRIPT_DIR/grid-help.sh" ;;
+  help)   popup 92 47 "$SCRIPT_DIR/grid-help.sh" ;;
+  # The btop-style main menu (prefix+Esc, the ≡ chip, right-click pane menu):
+  # OPTIONS / HELP / QUIT. Same canvas as the help sheet, because HELP and
+  # OPTIONS render inside this popup and return to the menu on Esc.
+  menu)    popup 92 47 "$SCRIPT_DIR/grid-menu.sh" ;;
+  options) popup 92 47 "$SCRIPT_DIR/grid-options.sh" ;;
   rain)   tmux lock-server ;;
   next)   "$SCRIPT_DIR/grid-next.sh" "$session" ;;
   bcast)  tmux set-window-option -t "$pane" synchronize-panes ;;

@@ -21,7 +21,11 @@ red="${esc}[38;5;203m" grn="${esc}[38;5;114m" cyn="${esc}[38;5;81m" gry="${esc}[
 
 k() { printf "   ${key}%-3s${r} %s\n" "$1" "$2"; }
 
-printf '\n %sclaude-code-grid%s   %spress %s then:%s\n' "$b" "$r" "$d" "$p" "$r"
+# The title, in btop's double-line menu lettering — the same glyphs the main
+# menu (prefix+Esc) draws its items with.
+printf '\n %s%s╦ ╦╔═╗╦  ╔═╗%s\n' "$hd" "$b" "$r"
+printf ' %s%s╠═╣║╣ ║  ╠═╝%s   %sclaude-code-grid — press %s then:%s\n' "$hd" "$b" "$r" "$d" "$p" "$r"
+printf ' %s%s╩ ╩╚═╝╩═╝╩%s\n' "$hd" "$b" "$r"
 
 printf '\n %sATTENTION%s\n' "$hd" "$r"
 k n "jump to the pane that wants you — blocked first, longest waiting first"
@@ -62,7 +66,7 @@ printf "   %sgrid-add%s [repo]   %sgrid-drop%s   %sgrid-note%s \"…\"   %sgrid-
 printf "   %spdev%s / %spdev-pick%s / %spdev-stop%s      %s(wdev… for the work grid)%s\n" \
   "$key" "$r" "$key" "$r" "$key" "$r" "$d" "$r"
 
-printf '\n %s%s : list-keys   for tmux'"'"'s own bindings%s\n' "$d" "$p" "$r"
+printf '\n %s%s Esc : the main menu   ·   %s : list-keys for tmux'"'"'s own bindings%s\n' "$d" "$p" "$p" "$r"
 printf '\n %spress any key — or click the %s✗%s' "$d" "$red" "$r"
 
 # Red ✗ in the top-right corner as the close affordance. Mouse reporting
