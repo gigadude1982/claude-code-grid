@@ -3,9 +3,10 @@
 # theme's accent over three block-glyph items — OPTIONS / HELP / QUIT.
 # ↑↓/j/k/Tab move, Enter or a click chooses, Esc/q or a click anywhere else
 # closes. HELP and OPTIONS run their screens inside this same popup and drop
-# back here when dismissed, btop-fashion; QUIT confirms, then kills the grid
-# session (the session-closed hook in grid.tmux.conf safe-prunes worktrees,
-# same as pdev-stop).
+# back here when dismissed, btop-fashion; QUIT confirms, then shuts down
+# every session — the whole tmux server — with each grid's worktrees safe-
+# pruned on the way out. `t` at the confirm narrows it to this grid alone,
+# which is what pdev-stop does.
 #
 # zsh, not bash, on purpose: telling a bare Esc apart from the Esc that opens
 # an arrow-key or mouse sequence needs a sub-second read timeout, and bash
@@ -158,19 +159,69 @@ run_screen() {
   draw; mouse_on
 }
 
+# shutdown <session…> — kill each named session, ours last, and make sure
+# every grid's worktrees still get their safe prune.
+#
+# The prune is spawned detached and delayed instead of being left to the
+# session-closed hook. The hook is fine while the server lives, but killing
+# the LAST session ends the server, and a hook's run-shell can go down with
+# it — exactly the case "quit everything" always hits. nohup keeps the
+# follow-up alive through the SIGHUP that takes the popup.
+#
+# Pruning twice is safe and already the shipped behaviour: pdev-stop runs
+# kill → sleep 1 → prune while the hook fires for the same session.
+# prune-worktrees.sh rewrites its state file and skips worktrees that are
+# already gone, so the loser of the race is a no-op. The sleep keeps them
+# staggered rather than concurrent.
+shutdown() {
+  local s state prunes=() others=()
+  for s in "$@"; do
+    [ -n "$s" ] || continue
+    state="$GRID_CONFIG/$s.worktrees"
+    [ -f "$state" ] && prunes+=("$state")
+    [[ "$s" == "$sess" ]] || others+=("$s")
+  done
+  if (( ${#prunes} )); then
+    # $0 carries the pruner, "$@" the state files — no quoting of paths
+    # into a -c string.
+    nohup zsh -c 'prune=$0; sleep 2; for f in "$@"; do "$prune" "$f"; done' \
+      "$SCRIPT_DIR/prune-worktrees.sh" "${prunes[@]}" >/dev/null 2>&1 &
+    disown 2>/dev/null
+  fi
+  # Ours last: the popup has to outlive the sessions it is killing.
+  for s in "${others[@]}"; do tmux kill-session -t "$s" 2>/dev/null; done
+  [ -n "$sess" ] && tmux kill-session -t "$sess" 2>/dev/null
+  exit 0
+}
+
+# btop's QUIT leaves the whole app. Here that means the tmux server: every
+# session, not just the grid the popup happens to be sitting over. `t` keeps
+# the narrower "this grid only" exit, which is what pdev-stop does.
 confirm_quit() {
-  [ -n "$sess" ] || return
+  local all=() s names
+  for s in ${(f)"$(tmux list-sessions -F '#{session_name}' 2>/dev/null)"}; do
+    [ -n "$s" ] && all+=("$s")
+  done
+  (( ${#all} )) || return
+  names=${(j:, :)all}
+  (( ${#names} > 46 )) && names="${#all} sessions"
+  local l1="quit — shut down every session: $names"
+  # Named plainly: this kills sessions that may have nothing to do with the
+  # grid, and that should not be a surprise discovered afterwards.
+  local l2="each claude exits · worktrees safe-pruned   [y] all · [t] this grid · [n] cancel"
+  local c1=$(( (cols - ${#l1}) / 2 + 1 )); (( c1 < 1 )) && c1=1
+  local c2=$(( (cols - ${#l2}) / 2 + 1 )); (( c2 < 1 )) && c2=1
   at $hint_row 1; printf '%s[2K' "$esc"
-  local msg="kill the $sess grid? every pane's claude exits; worktrees are safe-pruned (y/N)"
-  local col=$(( (cols - ${#msg}) / 2 + 1 )); (( col < 1 )) && col=1
-  at $hint_row $col; printf '%s[1;38;5;203m%s%s[0m' "$esc" "$msg" "$esc"
+  at $hint_row $c1; printf '%s[1;38;5;203m%s%s[0m' "$esc" "$l1" "$esc"
+  at $(( hint_row + 1 )) 1; printf '%s[2K' "$esc"
+  at $(( hint_row + 1 )) $c2; printf '%s[2m%s%s[0m' "$esc" "$l2" "$esc"
   local a=''
   read -srk1 a 2>/dev/null || a=''
-  if [[ "$a" == [yY] ]]; then
-    # The popup dies with the session — this is the last thing that runs.
-    tmux kill-session -t "$sess" 2>/dev/null
-    exit 0
-  fi
+  case "$a" in
+    [yY]) shutdown "${all[@]}" ;;
+    [tT]) [ -n "$sess" ] && shutdown "$sess" ;;
+  esac
+  at $(( hint_row + 1 )) 1; printf '%s[2K' "$esc"
   hint '↑↓ select · enter or click choose · esc close'
 }
 

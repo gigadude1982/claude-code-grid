@@ -61,7 +61,7 @@ README lookup.
 | key                               | what it does                                                                     |
 | --------------------------------- | -------------------------------------------------------------------------------- |
 | `prefix+?`                        | cheatsheet popup — every key below, plus what the border glyphs mean             |
-| `prefix+Esc`                      | **the main menu** — a btop-style overlay: OPTIONS / HELP / QUIT in block glyphs under the logo. Arrows or click to choose; quit confirms, then kills the grid (worktrees safe-pruned, same as `pdev-stop`) |
+| `prefix+Esc`                      | **the main menu** — a btop-style overlay: OPTIONS / HELP / QUIT in block glyphs under the logo. Arrows or click to choose. Quit confirms first, then shuts down **every** session — the whole tmux server — safe-pruning each grid's worktrees on the way out; `t` at the confirm narrows it to just this grid, the `pdev-stop` behavior |
 | `prefix+n`                        | **jump to the pane that most wants you** — blocked first, longest-waiting first; repeat to cycle |
 | `prefix+m`                        | mark/unmark this pane for targeted broadcast (`⦿` in its border)                 |
 | `prefix+p` / `prefix+P`           | pick a saved prompt → send to this pane / to the marked panes (all, if none marked) |
@@ -323,6 +323,16 @@ board), `<session>.log` (prune decisions), `prompts/` (prompt library),
   a popup act on the wrong grid. The bindings capture `#{pane_id}` /
   `#{session_name}` / `#{client_name}` at press time and pass them in as
   arguments.
+- **Killing the last session takes the server, and the server takes its
+  hooks with it.** `session-closed` fires `prune-dispatch.sh` per session,
+  which is enough while the server lives — but the menu's "quit everything"
+  kills the final session too, and a hook's `run-shell` can go down with the
+  server before it finishes. `grid-menu.sh` spawns the follow-up prune under
+  `nohup` *before* the kills, so it outlives the SIGHUP that takes the popup.
+  Pruning twice is fine and already the shipped behavior (`pdev-stop` prunes
+  directly while the hook fires for the same session): `prune-worktrees.sh`
+  rewrites its state file and skips worktrees that are already gone, and the
+  sleep keeps the two staggered rather than concurrent.
 - **A popup sized from a percentage will clip its own content.** The
   cheatsheet is a fixed 43 lines by 89 columns and a popup only gets
   `height - 2` usable rows, so it's sized absolutely — undersize it and the
