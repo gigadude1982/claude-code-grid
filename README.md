@@ -61,7 +61,7 @@ README lookup.
 | key                               | what it does                                                                     |
 | --------------------------------- | -------------------------------------------------------------------------------- |
 | `prefix+?`                        | cheatsheet popup — every key below, plus what the border glyphs mean             |
-| `prefix+Esc`                      | **the main menu** — a btop-style overlay: OPTIONS / HELP / QUIT in block glyphs under the logo. Arrows or click to choose. Quit confirms first, then shuts down **every** session — the whole tmux server — safe-pruning each grid's worktrees on the way out; `t` at the confirm narrows it to just this grid, the `pdev-stop` behavior |
+| `prefix+Esc` / `F1`               | **the main menu** — a btop-style overlay: OPTIONS / HELP / QUIT in block glyphs under the logo. Arrows or click to choose. Quit confirms first, then shuts down **every** session — the whole tmux server — safe-pruning each grid's worktrees on the way out; `t` at the confirm narrows it to just this grid, the `pdev-stop` behavior. `F1` is the no-prefix door to the same menu (on a Mac laptop that's `fn+F1`, unless standard function keys are on) |
 | `prefix+n`                        | **jump to the pane that most wants you** — blocked first, longest-waiting first; repeat to cycle |
 | `prefix+m`                        | mark/unmark this pane for targeted broadcast (`⦿` in its border)                 |
 | `prefix+p` / `prefix+P`           | pick a saved prompt → send to this pane / to the marked panes (all, if none marked) |
@@ -263,7 +263,7 @@ scripts/         the engine + helpers (all standalone, no state in-repo)
   grid-board.sh    shared cross-repo board (note / show / SessionStart inject)
   grid-git.sh      cross-repo git popup; grid-log.sh → the prune log popup
   grid-help.sh     prefix+? cheatsheet
-  grid-menu.sh     prefix+Esc / ≡ main menu — OPTIONS / HELP / QUIT, btop-style
+  grid-menu.sh     prefix+Esc / F1 / ≡ main menu — OPTIONS / HELP / QUIT, btop-style
   grid-options.sh  the options screen: theme, title, mute, party, broadcast, rain
   grid-restore.sh  post-reboot relaunch with --continue
 
