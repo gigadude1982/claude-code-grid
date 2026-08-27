@@ -7,7 +7,10 @@
 #   pdev / wdev            launch (or reattach) the grid with your last-picked
 #                          repo set; opens the picker if you've never picked
 #   pdev-pick / wdev-pick  fzf multi-select which repos get panes (tab =
-#                          toggle, enter = launch); selection is remembered
+#                          toggle, enter = launch); selection is remembered.
+#                          Entries ending in '/' are folders holding two or
+#                          more repos — pick one to put a single pane at the
+#                          parent (shipvane/ rather than shipvane/engine)
 #   pdev-stop / wdev-stop  tear down + safe-prune auto-created worktrees
 #   pdev-sweep / wdev-sweep  safe-prune EVERY worktree sitting on disk for
 #                          the grid's repos, tracked or not (run any time,
@@ -65,12 +68,20 @@ claude_tracked() {
   fi
 }
 
+# Discovery lives in grid-lib.sh so this picker and the one in grid-add.sh
+# (prefix+a, inside a running grid) offer the same list — repos, plus folders
+# holding two or more of them. Sourced in a subshell rather than at file scope
+# to keep the interactive shell's namespace to the p*/w* commands.
+_grid_repo_list() { ( . "$GRID_DIR/scripts/grid-lib.sh"; grid_repo_list "$1" ) }
+
 _grid_pick() {
   local session="$1" root="$2" profile="$3" repos
-  repos=$(find "$root" -maxdepth 3 -name .git -not -path '*/worktrees/*' 2>/dev/null \
-    | sed 's|/\.git$||' | sed "s|$root/||" | sort \
-    | fzf -m --prompt="$session> " --header='tab = multi-select · enter = launch grid')
+  repos=$(_grid_repo_list "$root" \
+    | fzf -m --prompt="$session> " \
+          --header='tab = multi-select · enter = launch · trailing / = folder of repos, one pane')
   [ -z "$repos" ] && return 0
+  # Trailing slashes are the picker's parent-folder marker, not path segments.
+  repos=$(print -r -- "$repos" | sed 's|/$||')
   mkdir -p "$GRID_CONFIG"
   print -r -- "$repos" > "$GRID_CONFIG/$session.repos"
   "$GRID_DIR/scripts/start-grid.sh" --session "$session" --root "$root" --profile "$profile" ${=repos}

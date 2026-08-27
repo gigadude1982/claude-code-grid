@@ -3,6 +3,8 @@
 #
 # Bound to prefix+a (opens the picker in a popup). Without an argument it
 # fzf-picks from the grid's root, hiding repos that already have a pane.
+# Entries ending in '/' are folders of repos (grid_repo_list) — picking one
+# gives the parent a pane; the slash is display only and is stripped below.
 #
 # Exists because the alternative was killing the whole session and re-picking
 # — which throws away three healthy conversations to start a fourth. The new
@@ -33,14 +35,22 @@ present=$(tmux list-panes -t "$session:0" -F '#{@repo}' 2>/dev/null | sort -u)
 
 rel="${1:-}"
 if [ -z "$rel" ]; then
-  rel=$(find "$root" -maxdepth 3 -name .git -not -path '*/worktrees/*' 2>/dev/null \
-    | sed 's|/\.git$||' | sed "s|^$root/||" | sort \
-    | awk -v pres="$present" '
-        BEGIN { n = split(pres, a, "\n"); for (i = 1; i <= n; i++) seen[a[i]] = 1 }
-        { label = $0; gsub("/", "-", label); if (!(label in seen)) print }' \
-    | fzf --prompt="add to $session> " --header='enter = add a pane for this repo')
+  # The present list arrives as a first input file, not `awk -v`: macOS's awk
+  # (BWK 20200816) rejects a literal newline inside a -v assignment, so the
+  # filter died — silently emptying the picker — the moment a grid had two
+  # panes to exclude.
+  rel=$(grid_repo_list "$root" \
+    | awk 'NR == FNR { seen[$0] = 1; next }
+           { label = $0; sub("/$", "", label); gsub("/", "-", label)
+             if (!(label in seen)) print }' <(printf '%s\n' "$present") - \
+    | fzf --prompt="add to $session> " \
+          --header='enter = add a pane · a trailing / is a folder of repos, opened as one')
 fi
 [ -n "$rel" ] || exit 0
+
+# The trailing slash is picker notation for "this is a parent folder", not
+# part of the path. Drop it before it reaches the label or the .repos file.
+rel="${rel%/}"
 
 repo="$root/$rel"
 [ -d "$repo" ] || { echo "grid-add: no such directory: $repo" >&2; exit 1; }

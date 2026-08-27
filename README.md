@@ -50,6 +50,23 @@ profile (`CLAUDE_CONFIG_DIR=~/.claude-<profile>`):
 | `grid-note "<text>"`        | leave a note the other panes' sessions will read                                                         |
 | `grid-board`                | show the shared cross-repo board                                                                         |
 
+Both pickers list every git repo under the grid's root **plus any folder
+holding two or more of them**, shown with a trailing slash:
+
+```
+shipvane/          ← one pane at the parent, one Claude across all six
+shipvane/bridge    ← or just this repo, as before
+shipvane/capstan
+shipvane/engine
+```
+
+Pick the parent when the repos are one system and the work crosses them —
+a change in `engine` that `bridge` has to follow is one conversation, not
+two half-informed ones. A folder wrapping a single repo isn't offered (it's
+that repo with a directory in the way), and a parent that is itself a repo
+is already in the list as one. Panes rooted at a non-repo folder behave
+normally; the `prefix+g` rollup just reports `(not a git repo)` for them.
+
 ## Keys
 
 `prefix` is tmux's default `Ctrl-b` unless you've remapped it. **`prefix+?`
@@ -299,6 +316,12 @@ board), `<session>.log` (prune decisions), `prompts/` (prompt library),
   command, so every popup key goes through `grid-click.sh` with the values
   already substituted. (Verified on tmux 3.7b, both from a key binding and
   from the command line.)
+- **macOS's awk rejects a literal newline in a `-v` assignment.** `awk -v
+  pres="$(one\nper\nline)"` dies with `newline in string` on BWK awk 20200816
+  (the system awk), which is how `grid-add`'s "hide repos that already have a
+  pane" filter came to empty the whole picker as soon as a grid had two panes
+  to exclude — and it looked like "no repos left to add", not like an error.
+  Multi-line data goes in as a first input file (`NR == FNR`) instead.
 - `tmux set-option -p` without `-t` targets the window's _active_ pane, not
   the pane running the command — always pass `-t "$TMUX_PANE"`.
 - **`pane-border-style` is per-pane but `pane-active-border-style` is
