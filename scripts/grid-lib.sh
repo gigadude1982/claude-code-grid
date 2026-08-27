@@ -64,3 +64,36 @@ grid_has_conversation() {
   _dir=$(printf '%s' "$1" | sed 's/[^a-zA-Z0-9]/-/g')
   [ -d "$HOME/.claude-$2/projects/$_dir" ]
 }
+
+# grid_repo_list <root> — everything the pickers can offer, one relative path
+# per line: every git repo under <root>, plus any parent folder holding two or
+# more of them, marked with a trailing '/'.
+#
+# The parent entries exist because a repo isn't always the unit of work. A
+# folder like shipvane/ holding capstan, bridge and engine is one system worth
+# one conversation's context; picking the three separately gives you three
+# Claudes that each see a third of it. Selecting `shipvane/` puts a single
+# pane at the parent instead, and everything downstream already copes — a
+# non-repo pane just reports "(not a git repo)" in the prefix+g rollup and
+# never grows a tracked worktree.
+#
+# Two is the threshold on purpose: a folder wrapping one repo is that repo
+# with a directory in the way, and offering it would near-double the picker
+# for nothing. A parent that is itself a repo is already listed as one, so
+# it's never re-offered.
+#
+# Callers strip the trailing '/' before using the path — it's a display
+# marker, and it would otherwise ride into the pane's @repo label as a dash.
+grid_repo_list() {
+  find "$1" -maxdepth 3 -name .git -not -path '*/worktrees/*' 2>/dev/null \
+    | sed 's|/\.git$||' | sed "s|^$1/||" \
+    | awk '
+        { repo[++n] = $0; isrepo[$0] = 1
+          p = $0
+          while (sub("/[^/]+$", "", p)) kids[p]++ }
+        END {
+          for (i = 1; i <= n; i++) print repo[i]
+          for (p in kids) if (kids[p] >= 2 && !(p in isrepo)) print p "/"
+        }' \
+    | sort
+}
