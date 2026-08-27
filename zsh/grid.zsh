@@ -10,7 +10,9 @@
 #                          toggle, enter = launch); selection is remembered.
 #                          Entries ending in '/' are folders holding two or
 #                          more repos — pick one to put a single pane at the
-#                          parent (shipvane/ rather than shipvane/engine)
+#                          parent (shipvane/ rather than shipvane/engine).
+#                          With the grid already up, picks become panes right
+#                          away rather than waiting for the next launch
 #   pdev-stop / wdev-stop  tear down + safe-prune auto-created worktrees
 #   pdev-sweep / wdev-sweep  safe-prune EVERY worktree sitting on disk for
 #                          the grid's repos, tracked or not (run any time,
@@ -82,6 +84,33 @@ _grid_pick() {
   [ -z "$repos" ] && return 0
   # Trailing slashes are the picker's parent-folder marker, not path segments.
   repos=$(print -r -- "$repos" | sed 's|/$||')
+
+  # A pick against a *running* grid used to go nowhere: start-grid.sh won't
+  # rebuild over a live session (it attaches instead), so the selection was
+  # written to <session>.repos and only became panes on the next launch —
+  # from the picker's seat, "I chose a repo and nothing happened". Hand the
+  # new picks to the running grid instead, which is exactly what grid-add is
+  # for, and leave the conversations already on screen alone.
+  #
+  # Deselecting doesn't close anything. A pane holds a live conversation, and
+  # silently killing three of them because the fourth was what you came for
+  # is not a trade a picker gets to make — prefix+X drops one deliberately.
+  if tmux has-session -t "$session" 2>/dev/null; then
+    local rel label present added=0 skipped=0
+    present=$(tmux list-panes -t "$session:0" -F '#{@repo}' 2>/dev/null)
+    for rel in ${(f)repos}; do
+      label=${rel//\//-}
+      if print -r -- "$present" | grep -qxF -- "$label"; then
+        skipped=$((skipped + 1))
+        continue
+      fi
+      GRID_SESSION="$session" "$GRID_DIR/scripts/grid-add.sh" "$rel" && added=$((added + 1))
+    done
+    print -r -- "$session is already running: added $added pane(s), $skipped already there; existing panes kept (prefix+X drops one)"
+    if [ -z "${TMUX:-}" ]; then tmux attach -t "$session"; else tmux switch-client -t "$session"; fi
+    return
+  fi
+
   mkdir -p "$GRID_CONFIG"
   print -r -- "$repos" > "$GRID_CONFIG/$session.repos"
   "$GRID_DIR/scripts/start-grid.sh" --session "$session" --root "$root" --profile "$profile" ${=repos}
