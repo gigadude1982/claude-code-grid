@@ -42,7 +42,7 @@ profile (`CLAUDE_CONFIG_DIR=~/.claude-<profile>`):
 | command                     | what it does                                                                                             |
 | --------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `pdev` / `wdev`             | launch (or reattach) the personal / work grid with your last-picked repos; opens the picker on first run |
-| `pdev-pick` / `wdev-pick`   | fzf multi-select which repos get panes (tab = toggle, enter = launch); remembered for next time          |
+| `pdev-pick` / `wdev-pick`   | fzf multi-select which repos get panes (tab = toggle, enter = launch); remembered for next time. With the grid already running it adds the new picks as panes instead of relaunching |
 | `pdev-stop` / `wdev-stop`   | tear down + safe-prune the worktrees this grid created                                                   |
 | `pdev-sweep` / `wdev-sweep` | safe-prune **every** worktree on disk for the grid's repos, tracked or not — runs with the session up, down, or never launched |
 | `grid-add [repo]`           | give another repo a pane without rebuilding the grid                                                     |
@@ -59,6 +59,11 @@ shipvane/bridge    ← or just this repo, as before
 shipvane/capstan
 shipvane/engine
 ```
+
+A pick against a grid that's already up doesn't relaunch it: the new choices
+arrive as panes (via the same code path as `prefix+a`), and the conversations
+already on screen are left alone. Deselecting never closes a pane — that's
+`prefix+X`, deliberately.
 
 Pick the parent when the repos are one system and the work crosses them —
 a change in `engine` that `bridge` has to follow is one conversation, not
