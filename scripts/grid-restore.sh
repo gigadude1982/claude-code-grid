@@ -42,6 +42,12 @@ restore_session() {
   tmux set-option -t "$session" @grid_profile "$profile"
   tmux set-option -t "$session" @grid_state   "$state"
   tmux set-option -t "$session" @grid_board   "$board"
+  # The arrangement itself came back with resurrect (it saves geometry), so
+  # this only re-stamps the option — deliberately without re-applying it,
+  # since that would flatten any pane sizes you'd nudged by hand. It matters
+  # for what happens NEXT: the first grid-add after a reboot should extend the
+  # layout you chose, not silently tile the grid.
+  tmux set-option -t "$session" @grid_layout  "$(grid_layout "$session")"
 
   while IFS=$'\t' read -r pane path cmd; do
     # Skip panes that already have something running — a restore can race

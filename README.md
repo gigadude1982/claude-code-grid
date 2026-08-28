@@ -47,6 +47,7 @@ profile (`CLAUDE_CONFIG_DIR=~/.claude-<profile>`):
 | `pdev-sweep` / `wdev-sweep` | safe-prune **every** worktree on disk for the grid's repos, tracked or not — runs with the session up, down, or never launched |
 | `grid-add [repo]`           | give another repo a pane without rebuilding the grid                                                     |
 | `grid-drop`                 | close the current pane's repo                                                                            |
+| `grid-layout [name]`        | how the panes sit: `tiled` (default), `columns` (side by side), `rows` (stacked), `main-left`, `main-top`; bare cycles. Per session, remembered, also `prefix+Space` and the `▦` chip |
 | `grid-note "<text>"`        | leave a note the other panes' sessions will read                                                         |
 | `grid-board`                | show the shared cross-repo board                                                                         |
 
@@ -91,7 +92,8 @@ README lookup.
 | `prefix+g`                        | popup: every repo's branch, ahead/behind, dirty state, last commit                |
 | `prefix+B`                        | popup: the shared cross-repo board                                                |
 | `prefix+L`                        | popup: the worktree prune log — what was kept, and why                            |
-| `prefix+a` / `prefix+X`           | add a repo's pane / drop this one (drop asks first)                              |
+| `prefix+a` / `prefix+X`           | add a repo's pane / drop this one (drop asks first). A new pane lands **last**, unless exactly one pane is marked (`⦿`), which places it right after that one |
+| `prefix+Space`                    | **cycle the pane layout** — tiled → columns (side by side) → rows (stacked) → main-left → main-top. Per session, remembered, and re-applied every time the grid changes shape |
 | `prefix+z`                        | zoom a pane full-screen and back (tmux built-in)                                 |
 | `Ctrl-\`                          | matrix-rain screensaver on demand (no prefix — it also runs after 10 idle minutes) |
 | `prefix+Ctrl-s` / `prefix+Ctrl-r` | manual layout save / restore (tmux-resurrect)                                     |
@@ -110,9 +112,10 @@ has a cost stamped on it.
 | `✚ ⎇ ▤ ✎ Σ` (left)   | add a repo · git across the grid · board · saved prompt · spend | `⎇` grows a `●` when any repo is dirty  |
 | the title (centre)   | rename this grid (stored per session, so `pdev` and `wdev` can differ) | right-click = theme menu · scroll = cycle themes |
 | the dots (centre)    | jump to that pane — colored like the border glyphs       | amber + blinking = that pane is low on context |
-| `⛶ 🔔 ☔ 🐇 🎉 ⇄` (right) | zoom · mute notifications 1h · rain now · jump to the neediest pane · party mode · broadcast | `🔕` while muted; the chip flips back on its own |
+| `⛶ ▦ 🔔 ☔ 🐇 🎉 ⇄` (right) | zoom · pane layout · mute notifications 1h · rain now · jump to the neediest pane · party mode · broadcast | `🔕` while muted; the chip flips back on its own |
+| `▦`                  | the layout menu — tiled / columns / rows / main-left / main-top | scroll it to cycle, same as `prefix+Space` |
 | `theme: <name>`      | the theme menu                                           |                                               |
-| `≡`                  | the main menu — options / help / quit                    | options gathers theme, title, mute, party, broadcast, rain delay in one place |
+| `≡`                  | the main menu — options / help / quit                    | options gathers theme, title, pane layout, mute, party, broadcast, rain delay in one place |
 | `?`                  | the cheatsheet                                           |                                               |
 | a pane               | right-click for every grid action on that pane           |                                               |
 | a pane's border      | right-click to recolor that repo (remembered across launches) |                                          |
@@ -212,7 +215,18 @@ source ~/dev/claude-code-grid/zsh/grid.zsh
   apart.
 - **Reshape a running grid** — `grid-add` / `grid-drop` add and remove repo
   panes in place, instead of killing the session and re-picking (which threw
-  away three healthy conversations to change the fourth).
+  away three healthy conversations to change the fourth). A new pane lands at
+  the end, in the order `<session>.repos` already recorded, so the grid comes
+  back after a restart looking the way you left it; mark one pane (`prefix+m`)
+  and the next add goes right beside it instead.
+- **Pick how the panes sit** — tiled is the right default at four panes and
+  the wrong one at two, where tmux stacks them into rows and gives each
+  conversation half the height and none of the width. `prefix+Space` (or the
+  `▦` chip, or `grid-layout columns`) switches to side-by-side columns, rows,
+  or one main pane with the rest beside/below it. The choice is per session,
+  saved across restarts, and re-applied every time the grid changes shape —
+  so `grid-add` extends the arrangement you chose instead of quietly tiling
+  it back.
 - **Targeted broadcast** — `prefix+b` still types into every pane, but
   `prefix+m` marks a subset first, because "commit and push" is usually right
   for three panes and actively wrong for the one mid-refactor. Saved prompts
@@ -276,6 +290,7 @@ scripts/         the engine + helpers (all standalone, no state in-repo)
 
   grid-click.sh    the dispatcher every chip AND every popup key routes through
   grid-theme.sh    the 14 themes: apply / load / cycle / party / menu
+  grid-layout.sh   pane arrangement: tiled / columns / rows / main-*, per session
   grid-color.sh    per-repo border colour menu, persisted per session
   grid-rain.sh     the matrix-rain screensaver (tmux lock-command)
   grid-next.sh     prefix+n / 🐇 attention queue
@@ -286,7 +301,7 @@ scripts/         the engine + helpers (all standalone, no state in-repo)
   grid-git.sh      cross-repo git popup; grid-log.sh → the prune log popup
   grid-help.sh     prefix+? cheatsheet
   grid-menu.sh     prefix+Esc / F1 / ≡ main menu — OPTIONS / HELP / QUIT, btop-style
-  grid-options.sh  the options screen: theme, title, mute, party, broadcast, rain
+  grid-options.sh  the options screen: theme, title, layout, mute, party, broadcast, rain
   grid-restore.sh  post-reboot relaunch with --continue
 
   claude-notify.sh      Claude hook → macOS banner + ntfy push, classified by
@@ -308,7 +323,8 @@ install.sh
 Runtime state lives in `~/.config/claude-code-grid/`: `<session>.repos` (last
 picker selection), `<session>.env` (root/profile, for restore),
 `<session>.worktrees` (tracked worktrees), `<session>.colors` (hand-picked
-repo colours), `theme.<session>` (chosen theme), `<session>.board.md` (shared
+repo colours), `theme.<session>` (chosen theme), `layout.<session>` (chosen
+pane arrangement), `<session>.board.md` (shared
 board), `<session>.log` (prune decisions), `prompts/` (prompt library),
 `ntfy.conf` (your topic — keep private).
 
@@ -329,6 +345,16 @@ board), `<session>.log` (prune decisions), `prompts/` (prompt library),
   Multi-line data goes in as a first input file (`NR == FNR`) instead.
 - `tmux set-option -p` without `-t` targets the window's _active_ pane, not
   the pane running the command — always pass `-t "$TMUX_PANE"`.
+- **tmux's `even-horizontal` is the layout everyone else calls a vertical
+  split.** The name describes the axis panes are arranged *along*, not the
+  orientation of the divider, so `even-horizontal` puts them side by side in
+  columns and `even-vertical` stacks them in rows. Nothing in the grid's UI
+  says "horizontal" for that reason — the layout menu, `grid-layout` and the
+  cheatsheet all say `columns` and `rows`, and `grid_layout_name()` maps both
+  spellings onto tmux's.
+- **`resize-pane -Z` is a toggle, not an unzoom**, so "unzoom before you
+  re-arrange" fired blind will *zoom* an unzoomed window and hide the new
+  layout behind one pane. `grid-layout.sh` asks `#{window_zoomed_flag}` first.
 - **`pane-border-style` is per-pane but `pane-active-border-style` is
   per-window**, so the pane you are focused on does not wear the style its
   own state set — it wears one option shared by the whole window, which

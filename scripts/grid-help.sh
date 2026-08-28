@@ -43,8 +43,9 @@ k B "shared cross-repo board"
 k L "worktree prune log — what was kept, and why"
 
 printf '\n %sRESHAPE%s\n' "$hd" "$r"
-k a "add a repo's pane"
+k a "add a repo's pane — lands last, or beside the ⦿ pane if exactly one is marked"
 k X "drop this pane's repo (asks first)"
+printf "   ${key}%-3s${r} %s\n" "spc" "cycle the layout: tiled → columns → rows → main-left → main-top"
 
 printf '\n %sBORDERS%s\n' "$hd" "$r"
 printf "   %s▲%s blocked on you   %s▶%s working   %s✔%s finished   %s·%s idle\n" \
@@ -57,6 +58,7 @@ printf "   ${key}%-7s${r} %s\n" "title" "click = rename · right-click or theme:
 printf "   ${key}%-7s${r} %s\n" "dots" "click a pane's ● in the title line to jump to it"
 printf "   ${key}%-7s${r} %s\n" "pane" "right-click a pane for its menu, its border for repo colours"
 printf "   ${key}%-7s${r} %s\n" "chips" "✚ add · ⎇ git (● dirty) · ▤ board · ✎ prompt · Σ spend · ⛶ zoom"
+printf "   ${key}%-7s${r} %s\n" "layout" "▦ click = layout menu · scroll it = cycle (same as prefix+space)"
 printf "   ${key}%-7s${r} %s\n" "dots+" "amber blinking ● = pane low on context · borders show ◆model \$cost"
 printf "   ${key}%-7s${r} %s\n" "more" "🎉 party · 🔔 mute 1h · ☔/C-\\ rain (10m idle too) · 🐇 neediest pane · ⇄ cast"
 

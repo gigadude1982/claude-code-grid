@@ -21,6 +21,8 @@
 # Inside a running grid (also bound to prefix keys — see tmux/grid.tmux.conf):
 #   grid-add [repo]        give another repo a pane without rebuilding
 #   grid-drop              close the current pane's repo
+#   grid-layout [name]     tiled / columns / rows / main-left / main-top;
+#                          bare cycles, and the choice sticks per session
 #   grid-note "<text>"     leave a note the other panes' sessions will read
 #   grid-board             show the shared board
 
@@ -152,5 +154,11 @@ wdev-sweep() { "$GRID_DIR/scripts/grid-sweep.sh" work; }
 # place you'd type them.
 grid-add()   { "$GRID_DIR/scripts/grid-add.sh" "$@"; }
 grid-drop()  { "$GRID_DIR/scripts/grid-drop.sh" "$@"; }
+# No argument cycles, like prefix+Space; a name (tiled / columns / rows /
+# main-left / main-top) goes straight there.
+grid-layout() {
+  if [ $# -eq 0 ]; then "$GRID_DIR/scripts/grid-layout.sh" next
+  else "$GRID_DIR/scripts/grid-layout.sh" apply "$@"; fi
+}
 grid-note()  { "$GRID_DIR/scripts/grid-board.sh" note "$@"; }
 grid-board() { "$GRID_DIR/scripts/grid-board.sh" show; }

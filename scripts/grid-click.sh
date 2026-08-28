@@ -40,7 +40,7 @@ case "$range" in
     tmux command-prompt ${client:+-t "$client"} -I "$cur" -p 'grid title:' \
       "set-option -t '$session' @grid_title '%%'"
     ;;
-  # Absolute, and sized to the sheet: it is 43 lines by 89 columns, and a
+  # Absolute, and sized to the sheet: it is 44 lines by 89 columns, and a
   # popup only gets height-2 usable rows. Undersize it and the sheet's own
   # title scrolls off the top before you can read it.
   help)   popup 92 47 "$SCRIPT_DIR/grid-help.sh" ;;
@@ -53,6 +53,9 @@ case "$range" in
   next)   "$SCRIPT_DIR/grid-next.sh" "$session" ;;
   bcast)  tmux set-window-option -t "$pane" synchronize-panes ;;
   theme)  "$SCRIPT_DIR/grid-theme.sh" menu "$client" "$session" ;;
+  # The ▦ chip. Click opens the menu, the wheel cycles (bound in the conf,
+  # straight to grid-layout.sh — same split as the theme chip).
+  layout) "$SCRIPT_DIR/grid-layout.sh" menu "$client" "$session" ;;
   party)  "$SCRIPT_DIR/grid-theme.sh" party "$session" ;;
   add)    popup '60%' '60%' "$SCRIPT_DIR/grid-add.sh" ;;
   git)    popup '80%' '80%' "$SCRIPT_DIR/grid-git.sh" ;;

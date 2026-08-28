@@ -2,8 +2,8 @@
 # grid-drop.sh [pane] — remove a repo's pane from the running grid.
 #
 # Bound to prefix+X (behind a confirm-before, since this kills a live Claude
-# session). Drops the pane, re-tiles, and forgets the repo in
-# <session>.repos so the next launch doesn't bring it back.
+# session). Drops the pane, re-applies the grid's layout, and forgets the repo
+# in <session>.repos so the next launch doesn't bring it back.
 #
 # The repo's worktree entry is deliberately left in <session>.worktrees: the
 # safe-prune at teardown is the only thing allowed to decide a worktree is
@@ -35,5 +35,5 @@ if [ -f "$f" ]; then
 fi
 
 tmux kill-pane -t "$pane"
-tmux select-layout -t "$session:0" tiled
+grid_apply_layout "$session"
 tmux display-message "grid: dropped $label"
