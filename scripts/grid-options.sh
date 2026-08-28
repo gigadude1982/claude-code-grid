@@ -1,8 +1,8 @@
 #!/bin/zsh
 # grid-options.sh — the grid's options screen, btop-styled: the settings
-# that were scattered across chips and menus (theme, title, mute, party,
-# broadcast, rain delay) gathered in one place. ↑↓/j/k move, ‹ › (←/→) or
-# Enter change, a click selects-and-changes, Esc/q goes back — to the main
+# that were scattered across chips and menus (theme, title, pane layout, mute,
+# party, broadcast, rain delay) gathered in one place. ↑↓/j/k move, ‹ › (←/→)
+# or Enter change, a click selects-and-changes, Esc/q goes back — to the main
 # menu when launched from grid-menu.sh, or just closes when run standalone.
 #
 # zsh for the same reason as grid-menu.sh: bash 3.2's `read -t` can't do the
@@ -42,6 +42,7 @@ header=(
 opt_names=(
   'theme'
   'grid title'
+  'pane layout'
   'notifications'
   'party mode'
   'broadcast typing'
@@ -50,6 +51,7 @@ opt_names=(
 opt_descs=(
   'colour scheme for this session — chrome, pane grounds, highlight; applies instantly'
   'the centered name on the title line; empty falls back to the session name'
+  'how the panes sit — columns is side by side, rows is stacked; prefix+Space cycles'
   'claude banners and pushes; muting lasts an hour, then flips back on its own'
   'cycle through every theme, one every 3s, until toggled off'
   'type into ALL panes at once — the ⇄ chip'
@@ -79,23 +81,26 @@ value_of() {
       print -r -- "${t:-(session name)}"
       ;;
     3)
+      grid_layout_label "$(grid_layout "$sess")"
+      ;;
+    4)
       if [ -n "$(tmux show-options -gv @grid_mute 2>/dev/null)" ]; then
         print 'muted 1h'
       else
         print 'on'
       fi
       ;;
-    4)
+    5)
       if [ -n "$(tmux show-options -v -t "$sess" @grid_party 2>/dev/null)" ]; then
         print 'on 🎉'
       else
         print 'off'
       fi
       ;;
-    5)
+    6)
       tmux display-message -p -t "${pane:-$sess}" '#{?pane_synchronized,on,off}' 2>/dev/null || print 'off'
       ;;
-    6)
+    7)
       rain_label "$(tmux show-options -gv lock-after-time 2>/dev/null)"
       ;;
   esac
@@ -130,6 +135,12 @@ change() { # change <index> <1|-1>
       ;;
     2) edit_title ;;
     3)
+      # Quiet: the toast would land under this popup anyway, and the grid
+      # rearranging behind it is receipt enough once you close.
+      if (( dir < 0 )); then GRID_LAYOUT_QUIET=1 "$SCRIPT_DIR/grid-layout.sh" prev "$sess" >/dev/null 2>&1
+      else GRID_LAYOUT_QUIET=1 "$SCRIPT_DIR/grid-layout.sh" next "$sess" >/dev/null 2>&1; fi
+      ;;
+    4)
       # Mirrors the 🔔 chip in grid-click.sh: an epoch in @grid_mute that
       # claude-notify.sh honours until it passes.
       if [ -n "$(tmux show-options -gv @grid_mute 2>/dev/null)" ]; then
@@ -139,9 +150,9 @@ change() { # change <index> <1|-1>
       fi
       tmux refresh-client -S 2>/dev/null
       ;;
-    4) "$SCRIPT_DIR/grid-theme.sh" party "$sess" >/dev/null 2>&1 ;;
-    5) tmux set-window-option -t "${pane:-$sess}" synchronize-panes 2>/dev/null ;;
-    6)
+    5) "$SCRIPT_DIR/grid-theme.sh" party "$sess" >/dev/null 2>&1 ;;
+    6) tmux set-window-option -t "${pane:-$sess}" synchronize-panes 2>/dev/null ;;
+    7)
       local cur=$(tmux show-options -gv lock-after-time 2>/dev/null) i=1 n=${#rain_steps}
       for (( i = 1; i <= n; i++ )); do [ "${rain_steps[i]}" = "${cur:-600}" ] && break; done
       (( i > n )) && i=4          # unknown value: treat as the 10m default

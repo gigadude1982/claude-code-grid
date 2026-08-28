@@ -11,6 +11,13 @@
 # pane is dressed by grid-pane.sh, so it's indistinguishable from one built
 # at launch, and the selection is written back to <session>.repos so the next
 # `pdev` comes up with it too.
+#
+# The split direction is deliberately not a choice: grid_apply_layout below
+# re-arranges the whole window a line later, so any geometry a split produced
+# is gone before it's drawn. Orientation is a per-grid setting instead
+# (prefix+Space / the ▦ chip / grid-layout.sh). What the split target DOES
+# decide is order — select-layout arranges panes by index — which is why the
+# target is chosen carefully below and mirrored into <session>.repos.
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -59,19 +66,46 @@ repo="$root/$rel"
 # rather than colliding with pane 0.
 count=$(tmux list-panes -t "$session:0" -F x 2>/dev/null | wc -l | tr -d ' ')
 
-pane=$(tmux split-window -t "$session:0" -c "$root" -P -F '#{pane_id}')
-tmux select-layout -t "$session:0" tiled
+# Which pane gets split — i.e. where the new one lands in the layout.
+#
+# It used to be the window's active pane, which meant the repo appeared
+# wherever the cursor happened to be while the .repos file appended it to the
+# end: the live grid and the next `pdev` disagreed about the order. The last
+# pane is what "add a repo" implies, and it's what the file already said.
+#
+# Exactly one marked pane (prefix+m) overrides that — the ⦿ gesture already
+# means "this one", so a repo can be placed next to the one it relates to.
+# Several marked panes is a broadcast set, not a placement hint, so it's
+# ignored rather than guessed at.
+target=$(tmux list-panes -t "$session:0" -F '#{pane_id} #{@marked}' 2>/dev/null \
+  | awk '$2 == 1 { m[++n] = $1 } END { if (n == 1) print m[1] }')
+[ -n "$target" ] || \
+  target=$(tmux list-panes -t "$session:0" -F '#{pane_id}' 2>/dev/null | tail -1)
+
+pane=$(tmux split-window -t "${target:-$session:0}" -c "$root" -P -F '#{pane_id}')
+grid_apply_layout "$session"
 
 "$SCRIPT_DIR/grid-pane.sh" "$pane" "$repo" "$(grid_label "$rel")" \
   "$(grid_color "$count")" "$state" "$profile"
 
-# Remember it for next launch. Appended rather than rewritten so the existing
-# pane order is preserved.
+# Remember it for next launch, in the position it actually occupies: right
+# after the repo it was split off, not blindly at the end. Appending was fine
+# while the target was always the last pane, but a marked-pane placement would
+# come back somewhere else after a restart — and "the grid looks different
+# than I left it" is exactly the drift this is meant to close.
+#
+# Lines are root-relative ("a/b") and pane labels are flattened ("a-b"), so
+# the match is on the flattened line — the same trick grid-drop.sh uses.
 f="$GRID_CONFIG/$session.repos"
-if [ -f "$f" ] && ! grep -qxF "$rel" "$f"; then
-  printf '%s\n' "$rel" >> "$f"
-elif [ ! -f "$f" ]; then
+after=$(tmux display-message -p -t "$target" '#{@repo}' 2>/dev/null)
+if [ ! -f "$f" ]; then
   printf '%s\n' "$rel" > "$f"
+elif ! grep -qxF "$rel" "$f"; then
+  awk -v rel="$rel" -v after="$after" '
+    { print
+      l = $0; gsub("/", "-", l)
+      if (!placed && after != "" && l == after) { print rel; placed = 1 } }
+    END { if (!placed) print rel }' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
 fi
 
 tmux select-pane -t "$pane"

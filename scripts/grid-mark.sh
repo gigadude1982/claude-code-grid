@@ -9,6 +9,11 @@
 # The point is that prefix+b (synchronize-panes) is all-or-nothing: "commit
 # and push" is usually right for three of the four panes and actively wrong
 # for the one mid-refactor.
+#
+# One mark does double duty as a placement hint: grid-add.sh splits it, so a
+# new repo can land beside the one it relates to instead of at the end. Two or
+# more marks is a broadcast set and grid-add ignores it — a set says which
+# panes to talk to, not where to put the next one.
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

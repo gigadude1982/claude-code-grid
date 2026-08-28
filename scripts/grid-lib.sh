@@ -19,6 +19,72 @@ grid_label() {
   printf '%s' "$1" | tr '/' '-'
 }
 
+# ── Pane arrangement ─────────────────────────────────────────────────────────
+# The grid is tiled by default, but a two-pane grid tiles into stacked rows —
+# fine for reading one long reply, wrong when you want two conversations side
+# by side. @grid_layout (session-scoped, saved to $GRID_CONFIG/layout.<session>)
+# is the choice, and every place that reshapes the window applies it instead of
+# hardcoding `tiled`.
+#
+# The names are tmux's, and they are a trap worth naming: "even-horizontal"
+# arranges panes ALONG a horizontal axis — side-by-side columns, which is what
+# everyone else calls a *vertical* split. The friendly labels below exist so
+# nothing in the UI has to say "horizontal" and mean the opposite.
+GRID_LAYOUTS="tiled even-horizontal even-vertical main-vertical main-horizontal"
+
+# grid_layout_label <tmux-layout> — what the menus and options screen call it.
+grid_layout_label() {
+  case "$1" in
+    even-horizontal) printf 'columns' ;;
+    even-vertical)   printf 'rows' ;;
+    main-vertical)   printf 'main-left' ;;
+    main-horizontal) printf 'main-top' ;;
+    *)               printf '%s' "$1" ;;
+  esac
+}
+
+# grid_layout_desc <tmux-layout> — the one-line "what this will look like".
+grid_layout_desc() {
+  case "$1" in
+    tiled)           printf 'an even grid' ;;
+    even-horizontal) printf 'side by side' ;;
+    even-vertical)   printf 'stacked top to bottom' ;;
+    main-vertical)   printf 'one big pane left, the rest stacked right' ;;
+    main-horizontal) printf 'one big pane on top, the rest in a row below' ;;
+    *)               printf '' ;;
+  esac
+}
+
+# grid_layout_name <word> — friendly label OR tmux name → tmux name. Fails on
+# anything else, so a typo in a saved file or a --layout flag falls back to
+# tiled instead of handing tmux a layout string it will reject.
+grid_layout_name() {
+  case "$1" in
+    tiled)                    printf 'tiled' ;;
+    columns|even-horizontal)  printf 'even-horizontal' ;;
+    rows|even-vertical)       printf 'even-vertical' ;;
+    main-left|main-vertical)  printf 'main-vertical' ;;
+    main-top|main-horizontal) printf 'main-horizontal' ;;
+    *) return 1 ;;
+  esac
+}
+
+# grid_layout <session> — the session's layout, as tmux spells it.
+#
+# The option is the fast path; the file behind it is what carries the choice
+# across a server restart, and reading it here is why no load hook is needed —
+# whatever asks first gets the saved answer.
+grid_layout() {
+  _l=$(tmux show-options -v -t "$1" @grid_layout 2>/dev/null)
+  [ -n "$_l" ] || _l=$(cat "$GRID_CONFIG/layout.$1" 2>/dev/null)
+  grid_layout_name "${_l:-tiled}" || printf 'tiled'
+}
+
+# grid_apply_layout <session> — re-arrange the grid's window to that layout.
+grid_apply_layout() {
+  tmux select-layout -t "$1:0" "$(grid_layout "$1")" 2>/dev/null
+}
+
 # grid_current_session — which grid are we acting on?
 #
 # Order matters. $GRID_SESSION is set explicitly by the key bindings, because
