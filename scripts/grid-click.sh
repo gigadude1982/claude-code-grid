@@ -40,15 +40,15 @@ case "$range" in
     tmux command-prompt ${client:+-t "$client"} -I "$cur" -p 'grid title:' \
       "set-option -t '$session' @grid_title '%%'"
     ;;
-  # Absolute, and sized to the sheet: it is 44 lines by 89 columns, and a
+  # Absolute, and sized to the sheet: it is 45 lines by 89 columns, and a
   # popup only gets height-2 usable rows. Undersize it and the sheet's own
   # title scrolls off the top before you can read it.
-  help)   popup 92 47 "$SCRIPT_DIR/grid-help.sh" ;;
+  help)   popup 92 48 "$SCRIPT_DIR/grid-help.sh" ;;
   # The btop-style main menu (prefix+Esc, the ≡ chip, right-click pane menu):
   # OPTIONS / HELP / QUIT. Same canvas as the help sheet, because HELP and
   # OPTIONS render inside this popup and return to the menu on Esc.
-  menu)    popup 92 47 "$SCRIPT_DIR/grid-menu.sh" ;;
-  options) popup 92 47 "$SCRIPT_DIR/grid-options.sh" ;;
+  menu)    popup 92 48 "$SCRIPT_DIR/grid-menu.sh" ;;
+  options) popup 92 48 "$SCRIPT_DIR/grid-options.sh" ;;
   rain)   tmux lock-server ;;
   next)   "$SCRIPT_DIR/grid-next.sh" "$session" ;;
   bcast)  tmux set-window-option -t "$pane" synchronize-panes ;;
@@ -68,6 +68,26 @@ case "$range" in
   # gesture, so this one is keyboard/menu only.
   promptmarked) popup '70%' '60%' "$SCRIPT_DIR/grid-prompt.sh marked" ;;
   zoom)   tmux resize-pane -Z -t "$pane" ;;
+  # The ▲ ▼ chips page the active pane. They exist for touch clients: on an
+  # iPad reaching the grid through a VS Code tunnel, xterm.js turns a tap into
+  # a click tmux hears, but a finger scroll only moves xterm's own (empty,
+  # tmux is full-screen) viewport, so neither tmux nor claude ever sees a
+  # wheel. A tap on a chip is the one scroll gesture that survives the trip.
+  # Routing mirrors tmux's stock WheelUpPane fork: a pane whose app owns the
+  # screen (claude's fullscreen renderer, vim, less — alternate_on or mouse
+  # tracking on) gets PageUp/PageDown, which claude reads as half a screen;
+  # a plain shell pane pages tmux's own history in copy mode, with -e so
+  # paging back down to the live screen drops out of copy mode again.
+  pgup|pgdn)
+    read -r alt inmode mouse <<<"$(tmux display-message -p -t "$pane" '#{alternate_on} #{pane_in_mode} #{mouse_any_flag}')"
+    if [ "$inmode" = 1 ]; then
+      [ "$range" = pgup ] && tmux send-keys -t "$pane" -X page-up || tmux send-keys -t "$pane" -X page-down
+    elif [ "$alt" = 1 ] || [ "$mouse" = 1 ]; then
+      [ "$range" = pgup ] && tmux send-keys -t "$pane" PPage || tmux send-keys -t "$pane" NPage
+    elif [ "$range" = pgup ]; then
+      tmux copy-mode -e -t "$pane" && tmux send-keys -t "$pane" -X page-up
+    fi
+    ;;
   mute)
     # Quiet hours: park an expiry epoch in @grid_mute. claude-notify.sh
     # swallows banners/pushes while it's in the future and clears it once
