@@ -112,6 +112,7 @@ has a cost stamped on it.
 | `✚ ⎇ ▤ ✎ Σ` (left)   | add a repo · git across the grid · board · saved prompt · spend | `⎇` grows a `●` when any repo is dirty  |
 | the title (centre)   | rename this grid (stored per session, so `pdev` and `wdev` can differ) | right-click = theme menu · scroll = cycle themes |
 | the dots (centre)    | jump to that pane — colored like the border glyphs       | amber + blinking = that pane is low on context |
+| `▲ ▼` (right)        | page the active pane up / down — half a screen in Claude's fullscreen renderer, tmux copy mode in a plain shell | the wheel over either chip does the same; built for touch clients, see the gotchas |
 | `⛶ ▦ 🔔 ☔ 🐇 🎉 ⇄` (right) | zoom · pane layout · mute notifications 1h · rain now · jump to the neediest pane · party mode · broadcast | `🔕` while muted; the chip flips back on its own |
 | `▦`                  | the layout menu — tiled / columns / rows / main-left / main-top | scroll it to cycle, same as `prefix+Space` |
 | `theme: <name>`      | the theme menu                                           |                                               |
@@ -388,9 +389,19 @@ board), `<session>.log` (prune decisions), `prompts/` (prompt library),
   rewrites its state file and skips worktrees that are already gone, and the
   sleep keeps the two staggered rather than concurrent.
 - **A popup sized from a percentage will clip its own content.** The
-  cheatsheet is a fixed 43 lines by 89 columns and a popup only gets
+  cheatsheet is a fixed 45 lines by 89 columns and a popup only gets
   `height - 2` usable rows, so it's sized absolutely — undersize it and the
   sheet's own title scrolls off the top before you can read it.
+- **A finger scroll on an iPad never reaches tmux.** Through a VS Code
+  tunnel the terminal is xterm.js, which reports a tap as a click but (until
+  its March 2026 touch work ships in the client you're holding) answers a
+  finger scroll by scrolling its own viewport — empty, because tmux draws
+  full-screen. Neither the grid's mouse mode nor Claude's own mouse tracking
+  is at fault: no wheel event is ever generated. The `▲ ▼` chips are the
+  workaround — a tap survives the trip, so they send PageUp/PageDown to the
+  active pane (or page tmux copy mode in a plain shell). PageUp/PageDown on
+  an attached keyboard, or an SSH client that does translate touch (Blink),
+  work too.
 - **The plan-usage cache holds floats.** `28.999999999999996` doesn't fit the
   status bar, and worse, `[ 28.99 -ge 85 ]` errors and takes the else branch —
   so a maxed-out window would have been painted green. `tmux-usage.sh` rounds
