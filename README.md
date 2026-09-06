@@ -12,9 +12,9 @@ Four panes, four states, read off the frames alone: `▶` shipvane-engine is
 mid-turn, `▲` lazy-creator-engine is blocked on a question, `✔` punch-pwa
 finished and is waiting for review, `·` pitchvault is idle. The status bar
 carries the rollup (`▲1 ✔1 ▶1`) and the account's plan usage; the title bar
-above it is a mouse toolbar. (These sessions were launched through a
-`claude --worktree` wrapper, which is why each border shows a
-`worktree-…` branch — see worktree auto-cleanup below.)
+above it is a mouse toolbar. (These sessions ran with Claude Code's own
+worktree isolation on, which is why each border shows a `worktree-…`
+branch — see worktree auto-cleanup below.)
 
 | marker | meaning                                             |
 | ------ | --------------------------------------------------- |
@@ -97,6 +97,8 @@ README lookup.
 | `prefix+z`                        | zoom a pane full-screen and back (tmux built-in)                                 |
 | `Ctrl-\`                          | matrix-rain screensaver on demand (no prefix — it also runs after 10 idle minutes) |
 | `prefix+Ctrl-s` / `prefix+Ctrl-r` | manual layout save / restore (tmux-resurrect)                                     |
+
+![The main menu: OPTIONS / HELP / QUIT under the block-letter logo](docs/images/menu.png)
 
 ## The mouse layer
 
