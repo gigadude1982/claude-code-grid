@@ -9,8 +9,9 @@
 #
 # The rain falls in the active theme's accent — matrix rains green,
 # nosferatu red, ocean cyan — with bright white heads, and the glyph pool is
-# half-width katakana plus digits, per the film. Also runnable on demand:
-# `tmux lock-server`, or "matrix rain" in the right-click pane menu.
+# half-width katakana plus digits, per the film. Also runnable on demand,
+# on one client only: the ☔ chip, C-\, or "matrix rain" in the right-click
+# pane menu (`tmux lock-client`); `tmux lock-server` still rains everywhere.
 set -u
 
 # Rain in the accent of THIS terminal's session — themes are per-session,

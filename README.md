@@ -95,7 +95,7 @@ README lookup.
 | `prefix+a` / `prefix+X`           | add a repo's pane / drop this one (drop asks first). A new pane lands **last**, unless exactly one pane is marked (`⦿`), which places it right after that one |
 | `prefix+Space`                    | **cycle the pane layout** — tiled → columns (side by side) → rows (stacked) → main-left → main-top. Per session, remembered, and re-applied every time the grid changes shape |
 | `prefix+z`                        | zoom a pane full-screen and back (tmux built-in)                                 |
-| `Ctrl-\`                          | matrix-rain screensaver on demand (no prefix — it also runs after 10 idle minutes) |
+| `Ctrl-\`                          | matrix-rain screensaver on demand, in this terminal only (no prefix — after 10 idle minutes it takes every terminal) |
 | `prefix+Ctrl-s` / `prefix+Ctrl-r` | manual layout save / restore (tmux-resurrect)                                     |
 
 ![The main menu: OPTIONS / HELP / QUIT under the block-letter logo](docs/images/menu.png)
@@ -115,7 +115,7 @@ has a cost stamped on it.
 | the title (centre)   | rename this grid (stored per session, so `pdev` and `wdev` can differ) | right-click = theme menu · scroll = cycle themes |
 | the dots (centre)    | jump to that pane — colored like the border glyphs       | amber + blinking = that pane is low on context |
 | `▲ ▼` (right)        | page the active pane up / down — half a screen in Claude's fullscreen renderer, tmux copy mode in a plain shell | the wheel over either chip does the same; built for touch clients, see the gotchas |
-| `⛶ ▦ 🔔 ☔ 🐇 🎉 ⇄` (right) | zoom · pane layout · mute notifications 1h · rain now · jump to the neediest pane · party mode · broadcast | `🔕` while muted; the chip flips back on its own |
+| `⛶ ▦ 🔔 ☔ 🐇 🎉 ⇄` (right) | zoom · pane layout · mute notifications 1h · rain now (this terminal only) · jump to the neediest pane · party mode · broadcast | `🔕` while muted; the chip flips back on its own |
 | `▦`                  | the layout menu — tiled / columns / rows / main-left / main-top | scroll it to cycle, same as `prefix+Space` |
 | `theme: <name>`      | the theme menu                                           |                                               |
 | `≡`                  | the main menu — options / help / quit                    | options gathers theme, title, pane layout, mute, party, broadcast, rain delay in one place |
@@ -163,7 +163,8 @@ and done-green mean the same thing in every theme.
 
 Ten idle minutes and every client dissolves into matrix rain, falling in the
 active theme's accent. Any key or click wakes it; `Ctrl-\`, the `☔` chip, or
-the pane right-click menu run it on demand.
+the pane right-click menu run it on demand — in that terminal only, so a
+tap in one window doesn't black out the others.
 
 ![The matrix-rain screensaver](docs/images/screensaver.png)
 
