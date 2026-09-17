@@ -46,7 +46,8 @@ opt_names=(
   'notifications'
   'party mode'
   'broadcast typing'
-  'rain screensaver'
+  'screensaver'
+  'screensaver delay'
 )
 opt_descs=(
   'colour scheme for this session — chrome, pane grounds, highlight; applies instantly'
@@ -55,8 +56,28 @@ opt_descs=(
   'claude banners and pushes; muting lasts an hour, then flips back on its own'
   'cycle through every theme, one every 3s, until toggled off'
   'type into ALL panes at once — the ⇄ chip'
-  'idle time before matrix rain takes every client (server-wide)'
+  ''   # filled per-value by desc_of: the description IS the effect's blurb
+  'idle time before the screensaver takes every client (server-wide)'
 )
+
+# Row 7's description changes with its value — "starfield" and "standby" want
+# different sentences, and a static line could only describe the row.
+desc_of() {
+  case $1 in
+    7) grid_saver_desc "$(value_of 7)" ;;
+    *) print -r -- "${opt_descs[$1]}" ;;
+  esac
+}
+
+# Same resolution order as grid-saver.sh: the session's option, then the file
+# that carries the choice across a tmux server restart (options don't), then
+# the global, then matrix.
+saver_current() {
+  local s=$(tmux show-options -v -t "$sess" @grid_saver 2>/dev/null)
+  [ -n "$s" ] || s=$(cat "$GRID_CONFIG/saver.$sess" 2>/dev/null)
+  [ -n "$s" ] || s=$(tmux show-options -gv @grid_saver 2>/dev/null)
+  print -r -- "${s:-matrix}"
+}
 
 # The rain delays on offer, in seconds. 0 = never.
 rain_steps=(0 60 300 600 1800)
@@ -101,6 +122,9 @@ value_of() {
       tmux display-message -p -t "${pane:-$sess}" '#{?pane_synchronized,on,off}' 2>/dev/null || print 'off'
       ;;
     7)
+      saver_current
+      ;;
+    8)
       rain_label "$(tmux show-options -gv lock-after-time 2>/dev/null)"
       ;;
   esac
@@ -153,6 +177,15 @@ change() { # change <index> <1|-1>
     5) "$SCRIPT_DIR/grid-theme.sh" party "$sess" >/dev/null 2>&1 ;;
     6) tmux set-window-option -t "${pane:-$sess}" synchronize-panes 2>/dev/null ;;
     7)
+      # Written to BOTH the session option and the file: the option is what
+      # grid-saver.sh reads first and what makes the change take effect now,
+      # the file is what survives a server restart.
+      local nxt=$(grid_saver_step $dir "$(saver_current)")
+      tmux set-option -t "$sess" @grid_saver "$nxt" 2>/dev/null
+      mkdir -p "$GRID_CONFIG"
+      print -r -- "$nxt" > "$GRID_CONFIG/saver.$sess"
+      ;;
+    8)
       local cur=$(tmux show-options -gv lock-after-time 2>/dev/null) i=1 n=${#rain_steps}
       for (( i = 1; i <= n; i++ )); do [ "${rain_steps[i]}" = "${cur:-600}" ] && break; done
       (( i > n )) && i=4          # unknown value: treat as the 10m default
@@ -213,7 +246,7 @@ draw() {
   printf '─%.0s' {1..$(( box_w - 2 ))}; printf '┘%s[0m' "$esc"
   (( r += 2 ))
   desc_row=$r
-  line=${opt_descs[sel]}
+  line=$(desc_of $sel)
   col=$(( (cols - ${#line}) / 2 + 1 )); (( col < 1 )) && col=1
   at $r $col; printf '%s[2m%s%s[0m' "$esc" "$line" "$esc"
   (( r += 2 ))

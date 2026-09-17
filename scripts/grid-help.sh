@@ -61,7 +61,7 @@ printf "   ${key}%-7s${r} %s\n" "chips" "✚ add · ⎇ git (● dirty) · ▤ b
 printf "   ${key}%-7s${r} %s\n" "scroll" "▲ ▼ page the active pane — the scroll that works from a finger (iPad)"
 printf "   ${key}%-7s${r} %s\n" "layout" "▦ click = layout menu · scroll it = cycle (same as prefix+space)"
 printf "   ${key}%-7s${r} %s\n" "dots+" "amber blinking ● = pane low on context · borders show ◆model \$cost"
-printf "   ${key}%-7s${r} %s\n" "more" "🎉 party · 🔔 mute 1h · ☔/C-\\ rain (10m idle too) · 🐇 neediest pane · ⇄ cast"
+printf "   ${key}%-7s${r} %s\n" "more" "🎉 party · 🔔 mute 1h · ☔/C-\\ saver (10m idle) · 🐇 neediest pane · ⇄ cast"
 
 printf '\n %sFROM THE SHELL%s\n' "$hd" "$r"
 printf "   %sgrid-add%s [repo]   %sgrid-drop%s   %sgrid-note%s \"…\"   %sgrid-board%s\n" \

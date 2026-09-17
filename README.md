@@ -95,7 +95,7 @@ README lookup.
 | `prefix+a` / `prefix+X`           | add a repo's pane / drop this one (drop asks first). A new pane lands **last**, unless exactly one pane is marked (`⦿`), which places it right after that one |
 | `prefix+Space`                    | **cycle the pane layout** — tiled → columns (side by side) → rows (stacked) → main-left → main-top. Per session, remembered, and re-applied every time the grid changes shape |
 | `prefix+z`                        | zoom a pane full-screen and back (tmux built-in)                                 |
-| `Ctrl-\`                          | matrix-rain screensaver on demand, in this terminal only (no prefix — after 10 idle minutes it takes every terminal) |
+| `Ctrl-\`                          | screensaver on demand, in this terminal only (no prefix — after 10 idle minutes it takes every terminal) |
 | `prefix+Ctrl-s` / `prefix+Ctrl-r` | manual layout save / restore (tmux-resurrect)                                     |
 
 ![The main menu: OPTIONS / HELP / QUIT under the block-letter logo](docs/images/menu.png)
@@ -115,10 +115,10 @@ has a cost stamped on it.
 | the title (centre)   | rename this grid (stored per session, so `pdev` and `wdev` can differ) | right-click = theme menu · scroll = cycle themes |
 | the dots (centre)    | jump to that pane — colored like the border glyphs       | amber + blinking = that pane is low on context |
 | `▲ ▼` (right)        | page the active pane up / down — half a screen in Claude's fullscreen renderer, tmux copy mode in a plain shell | the wheel over either chip does the same; built for touch clients, see the gotchas |
-| `⛶ ▦ 🔔 ☔ 🐇 🎉 ⇄` (right) | zoom · pane layout · mute notifications 1h · rain now (this terminal only) · jump to the neediest pane · party mode · broadcast | `🔕` while muted; the chip flips back on its own |
+| `⛶ ▦ 🔔 ☔ 🐇 🎉 ⇄` (right) | zoom · pane layout · mute notifications 1h · screensaver now (this terminal only) · jump to the neediest pane · party mode · broadcast | `🔕` while muted; the chip flips back on its own |
 | `▦`                  | the layout menu — tiled / columns / rows / main-left / main-top | scroll it to cycle, same as `prefix+Space` |
 | `theme: <name>`      | the theme menu                                           |                                               |
-| `≡`                  | the main menu — options / help / quit                    | options gathers theme, title, pane layout, mute, party, broadcast, rain delay in one place |
+| `≡`                  | the main menu — options / help / quit                    | options gathers theme, title, pane layout, mute, party, broadcast, screensaver + its delay in one place |
 | `?`                  | the cheatsheet                                           |                                               |
 | a pane               | right-click for every grid action on that pane           |                                               |
 | a pane's border      | right-click to recolor that repo (remembered across launches) |                                          |
@@ -161,12 +161,67 @@ and done-green mean the same thing in every theme.
 
 ![The grid in the synthwave theme](docs/images/theme-synthwave.png)
 
-Ten idle minutes and every client dissolves into matrix rain, falling in the
+Ten idle minutes and every client dissolves into a screensaver, drawn in the
 active theme's accent. Any key or click wakes it; `Ctrl-\`, the `☔` chip, or
 the pane right-click menu run it on demand — in that terminal only, so a
 tap in one window doesn't black out the others.
 
+Which one is per session, on the options screen under **screensaver**:
+
+| | |
+|---|---|
+| `matrix`    | half-width katakana falling in the accent — the original |
+| `starfield` | warp-speed stars streaming out of the centre |
+| `life`      | Conway's game of life, cells aging from white to accent, reseeding when it settles |
+| `pipes`     | box-drawing pipes wandering in the grid's border palette |
+| `fire`      | a fire burning up the screen, its palette derived from the accent — the matrix grid burns green, nosferatu burns red |
+| `bounce`    | the CLAUDE logo, recolouring on every wall, with a running tally of exact corner hits |
+| `rain`      | weather: drops leaning on a wind that swings, splashing where they land |
+| `snow`      | weather: flakes that drift, settle into drifts, slump when a drift gets too steep, and eventually thaw |
+| `standby`   | the status screen — see below |
+| `heartbeat` | the last hour as a timeline — see below |
+| `random`    | a different effect each lock; rolls the eight above, never the two status screens |
+
+### The two that earn their keep
+
+Every other saver hides the dashboard. These enlarge it.
+
+**`standby`** is the room-readable now: a block clock, the rollup counts at
+size, and every pane with its state, how long it has been in it, and a context
+meter. `@cl_ctx` is percent *remaining*, so the bar empties as a pane fills up
+and turns amber then red — a pane about to compact is visible from the doorway,
+which a two-digit number never was.
+
+**`heartbeat`** is the hour behind you, which the grid could never answer
+before: pane options hold the current state and forget every stretch before it.
+`pane-state.sh` now appends each transition to
+`$GRID_CONFIG/ledger/<session>.log`, and `heartbeat` replays it as one row per
+pane, a cell per time bucket, coloured in the same language as the borders — so
+a red band *is* the twenty minutes that pane spent blocked while you were at
+lunch. Totals underneath say where the hour went. A fresh ledger still draws
+truthfully: the live `@state_since` covers the current stretch.
+
+### The gate, and the wake
+
+A grid that went idle with a pane sitting on `▲` used to dissolve into rain
+anyway, painting over the one thing the dashboard exists to surface. Now the
+lock still fires, but whenever a pane is blocked on you it renders `standby`
+instead of whatever you picked — the blocked pane gets bigger, not hidden. Set
+`@grid_saver_gate` to `off` to always get the effect you chose.
+
+Coming back, the screensaver says what you missed. It knows how long it held the
+screen and what every pane was doing when it took over, so on the way out it
+toasts the difference — `away 14m · ✔ 2 finished · ▲ smoothieking-ui blocked
+6m`. Silent when nothing changed, silent for a lock under a minute, and
+`@grid_saver_summary off` disables it.
+
 ![The matrix-rain screensaver](docs/images/screensaver.png)
+
+Adding another is a file: `scripts/savers/<name>.sh` defining an `animate()`,
+plus the name in `GRID_SAVERS` (`scripts/grid-lib.sh`). The host —
+`scripts/grid-saver.sh`, which tmux runs as its `lock-command` — has already
+worked out the session, its accent, the real terminal size, the alternate
+screen and the wake-on-any-key before it sources yours.
 
 ## Install
 
@@ -240,7 +295,10 @@ source ~/dev/claude-code-grid/zsh/grid.zsh
 - **Per-session themes** — fourteen, chosen from a menu or cycled with the
   scroll wheel, remembered per session across restarts, with a party mode
   that walks them. A ten-minute idle timer (or `Ctrl-\`) drops every client
-  into matrix rain in the active accent.
+  into one of ten screensavers in the active accent — matrix rain, starfield,
+  life, pipes, fire, a bouncing logo, rain, snow — or the two that show the
+  grid's state at size instead of hiding it, and toast what you missed on the
+  way back out.
 - **Account usage in the status bar** — 5-hour and 7-day plan windows with
   reset time and a 12-sample burn sparkline, colored by threshold, switching
   automatically between your personal/work accounts based on the attached
@@ -296,7 +354,9 @@ scripts/         the engine + helpers (all standalone, no state in-repo)
   grid-theme.sh    the 14 themes: apply / load / cycle / party / menu
   grid-layout.sh   pane arrangement: tiled / columns / rows / main-*, per session
   grid-color.sh    per-repo border colour menu, persisted per session
-  grid-rain.sh     the matrix-rain screensaver (tmux lock-command)
+  grid-saver.sh    the screensaver host (tmux lock-command); grid-rain.sh is an alias
+  savers/*.sh      one file per effect: matrix, starfield, life, pipes, fire,
+                   bounce, rain, snow, plus standby + heartbeat, the status screens
   grid-next.sh     prefix+n / 🐇 attention queue
   grid-mark.sh     ⦿ mark a pane for targeted broadcast
   grid-add/drop.sh reshape a live grid
@@ -327,10 +387,14 @@ install.sh
 Runtime state lives in `~/.config/claude-code-grid/`: `<session>.repos` (last
 picker selection), `<session>.env` (root/profile, for restore),
 `<session>.worktrees` (tracked worktrees), `<session>.colors` (hand-picked
-repo colours), `theme.<session>` (chosen theme), `layout.<session>` (chosen
-pane arrangement), `<session>.board.md` (shared
-board), `<session>.log` (prune decisions), `prompts/` (prompt library),
-`ntfy.conf` (your topic — keep private).
+repo colours), `theme.<session>` (chosen theme), `saver.<session>` (chosen
+screensaver — a file as well as an option, because tmux options don't survive a
+server restart), `layout.<session>` (chosen pane arrangement),
+`ledger/<session>.log` (every pane state transition, appended by
+`pane-state.sh`, read by the `heartbeat` screensaver, trimmed when it passes
+5000 lines), `<session>.board.md` (shared board), `<session>.log` (prune
+decisions), `prompts/` (prompt library), `ntfy.conf` (your topic — keep
+private).
 
 ## Hard-won gotchas encoded here
 
