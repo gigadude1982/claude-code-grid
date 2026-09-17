@@ -42,10 +42,14 @@ animate() {
     panes=$(tmux list-panes -t "$sess" -F '#{@repo}|#{@state}|#{@state_since}|#{@cl_ctx}' 2>/dev/null)
 
     frame=$(
+      # Both streams are normalised to TAB-delimited before they are merged.
+      # Repo names can contain spaces (grid_label only rewrites '/'), so a
+      # space-split anywhere along this path would truncate the name and file a
+      # pane's history under the wrong row. Tabs cannot occur in any field.
       {
-        [ -s "$ledger" ] && awk '{ print "L", $1, $2, $3 }' "$ledger"
-        printf '%s\n' "$panes" | awk -F'|' '$1 != "" { print "C", $1, $2, $3, $4 }'
-      } | awk -v now="$now" -v rows="$rows" -v cols="$cols" -v accent="$accent" -v sess="$sess" '
+        [ -s "$ledger" ] && awk -F'\t' -v OFS='\t' '{ print "L", $1, $2, $3 }' "$ledger"
+        printf '%s\n' "$panes" | awk -F'|' -v OFS='\t' '$1 != "" { print "C", $1, $2, $3, $4 }'
+      } | awk -F'\t' -v now="$now" -v rows="$rows" -v cols="$cols" -v accent="$accent" -v sess="$sess" '
       function scol(s) {
         if (s == "waiting") return 203
         if (s == "working") return 81
@@ -101,9 +105,17 @@ animate() {
             r = order[i]
             if (alive[r] && pri(live[r]) == p) show[++n] = r
           }
-        if (n > rows - 10) n = rows - 10
+        # Rows are capped by the height of the terminal, but every pane is still
+        # walked below. The cap decides what is DRAWN; the totals underneath
+        # have to describe the whole session, not the part that happened to
+        # fit, or "blocked 34m" quietly becomes a lie on a short terminal.
+        total = n
+        cap = rows - 11; if (cap < 1) cap = 1
+        if (n > cap) n = cap
+        hidden = total - n
+        sh = (hidden > 0) ? 1 : 0
 
-        top = int((rows - (n + 8)) / 2)
+        top = int((rows - (n + 8 + sh)) / 2)
         if (top < 1) top = 1
 
         out = ""
@@ -113,25 +125,29 @@ animate() {
 
         left = int((cols - (NAMEW + B + CTXW)) / 2) + 1; if (left < 1) left = 1
 
-        for (i = 1; i <= n; i++) {
+        for (i = 1; i <= total; i++) {
           r = show[i]
+          draw = (i <= n)
           row = top + 2 + i - 1
           # Padded to NAMEW but truncated to NAMEW-2, so a long repo name can
           # never run straight into its own bar with no gap.
-          out = out sprintf("\033[%d;%dH\033[38;5;250m%-*.*s\033[0m", row, left, NAMEW, NAMEW - 2, r)
+          if (draw)
+            out = out sprintf("\033[%d;%dH\033[38;5;250m%-*.*s\033[0m", row, left, NAMEW, NAMEW - 2, r)
 
           c = before[r]; k = 1; last = ""
           bar = ""
           for (b = 0; b < B; b++) {
             bt = start + (b + 1) * bsec
             while (k <= ec[r] && evt[r, k] <= bt) { c = evs[r, k]; k++ }
+            mins[c] += bsec / 60
+            if (!draw) continue
             cc = scol(c)
             # Run-length: only emit an SGR when the colour actually changes,
             # or a full-width row costs 100 escape sequences per pane per tick.
             if (cc != last) { bar = bar sprintf("\033[38;5;%dm", cc); last = cc }
             bar = bar ((c == "") ? "░" : "█")
-            mins[c] += bsec / 60
           }
+          if (!draw) continue
           out = out bar "\033[0m"
 
           # ── context pressure ──
@@ -152,6 +168,13 @@ animate() {
           }
         }
 
+        # ── what did not fit ──
+        # (no apostrophes in here: this awk program is a single-quoted shell
+        # word, and one would end it mid-flight)
+        if (hidden > 0)
+          out = out sprintf("\033[%d;%dH\033[2;38;5;%dm… and %d more\033[0m\033[K",
+                            top + n + 2, left + 2, accent, hidden)
+
         # ── axis ──
         ax = sprintf("%-*s", NAMEW, "")
         lbl = "-60m"; ax = ax lbl
@@ -159,7 +182,7 @@ animate() {
         lbl = "-30m"; ax = ax lbl
         for (q = length(ax) - NAMEW; q < B - 3; q++) ax = ax " "
         ax = ax "now"
-        out = out sprintf("\033[%d;%dH\033[2;38;5;%dm%s\033[0m\033[K", top + n + 3, left, accent, substr(ax, 1, NAMEW + B))
+        out = out sprintf("\033[%d;%dH\033[2;38;5;%dm%s\033[0m\033[K", top + n + 3 + sh, left, accent, substr(ax, 1, NAMEW + B))
 
         # ── totals ──
         tt = ""; tw = 0
@@ -169,8 +192,8 @@ animate() {
         if (mins["idle"]    >= 1) { tt = tt sprintf("\033[38;5;240m· idle %s\033[0m   ",     dur(int(mins["idle"])));    tw += 10 + length(dur(int(mins["idle"]))) }
         if (tw == 0) { tt = sprintf("\033[2;38;5;%dmno activity recorded yet\033[0m", accent); tw = 24 } else tw -= 3
         tc = int((cols - tw) / 2) + 1; if (tc < 1) tc = 1
-        out = out sprintf("\033[%d;%dH%s\033[K", top + n + 5, tc, tt)
-        out = out sprintf("\033[%d;1H\033[J", top + n + 6)
+        out = out sprintf("\033[%d;%dH%s\033[K", top + n + 5 + sh, tc, tt)
+        out = out sprintf("\033[%d;1H\033[J", top + n + 6 + sh)
         printf "%s", out
       }'
     )

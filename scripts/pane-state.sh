@@ -108,10 +108,15 @@ if [ "$prev" != "$state" ]; then
   tmux set-option -p -t "$TMUX_PANE" @state_since "$now" 2>/dev/null
 
   # ── the attention ledger ──
-  # One append-only line per transition: "<epoch> <state> <repo>". This is the
+  # One append-only line per transition: "<epoch>\t<state>\t<repo>". This is the
   # raw material the heartbeat screensaver draws its timeline from, and the
   # only record of where the day actually went — pane options hold the CURRENT
   # state and when it started, which forgets every stretch before this one.
+  #
+  # TAB-delimited, because grid_label only rewrites '/' to '-': a repo whose
+  # directory name contains a space reaches @repo intact, and a space-split
+  # reader would truncate "client work" to "client" and file its history under
+  # the wrong row. A tab cannot occur in either field.
   #
   # Transitions only, never the repeated same-state events, so a busy pane
   # costs one line per real change rather than one per tool call. Entirely
@@ -119,7 +124,7 @@ if [ "$prev" != "$state" ]; then
   # loses a data point, not the user's turn. heartbeat.sh trims the file.
   if [ -n "$sess" ] && [ "$sess" != "$info" ]; then
     mkdir -p "$GRID_CONFIG/ledger" 2>/dev/null
-    printf '%s %s %s\n' "$now" "$state" "$repo" \
+    printf '%s\t%s\t%s\n' "$now" "$state" "$repo" \
       >> "$GRID_CONFIG/ledger/$sess.log" 2>/dev/null
   fi
 fi

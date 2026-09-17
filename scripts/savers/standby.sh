@@ -60,7 +60,6 @@ animate() {
         'done')  n_done=$(( n_done + 1 )) ;;
       esac
       np=$(( np + 1 ))
-      [ "$np" -ge 12 ] && break
     done <<EOF
 $(tmux list-panes -t "$sess" -F '#{@repo}|#{@state}|#{@state_since}|#{@cl_ctx}' 2>/dev/null \
   | awk -F'|' '$1 != "" {
@@ -71,7 +70,19 @@ EOF
 
     # ── geometry ──
     # 5 clock rows, blank, date, blank, rollup, blank, then the ledger.
-    block_h=$(( 10 + np ))
+    #
+    # How many panes are LISTED depends on the terminal, not a fixed number: a
+    # tall terminal should show all of them, and a short one has to stop
+    # somewhere and say so rather than pretending the grid ends there. Every
+    # pane is still READ — the rollup counts above must describe the whole
+    # session, not just the part that fits.
+    shown=$np
+    maxrows=$(( rows - 12 )); [ "$maxrows" -lt 1 ] && maxrows=1
+    [ "$shown" -gt "$maxrows" ] && shown=$maxrows
+    overflow=$(( np - shown ))
+
+    block_h=$(( 10 + shown ))
+    [ "$overflow" -gt 0 ] && block_h=$(( block_h + 1 ))
     ox=$(( (now / 60) % 7 - 3 ))
     oy=$(( (now / 120) % 5 - 2 ))
     top=$(( (rows - block_h) / 2 + oy ))
@@ -143,7 +154,7 @@ EOF
     # ── ledger ──
     lc=$(( (cols - LEDGER_W) / 2 + 1 + ox ))
     [ "$lc" -lt 1 ] && lc=1
-    for (( i = 0; i < np; i++ )); do
+    for (( i = 0; i < shown; i++ )); do
       case "${sta[$i]}" in
         waiting) gl='▲' co=203 lbl='blocked' ;;
         working) gl='▶' co=81  lbl='working' ;;
@@ -196,7 +207,14 @@ EOF
       frame="$frame\e[$(( top + 10 + i ));${lc}H\e[1;38;5;${co}m${gl}\e[0m \e[38;5;250m${line}\e[0m  ${meter}\e[K"
     done
     # Anything left below the ledger from a longer previous frame.
-    frame="$frame\e[$(( top + 10 + np ));1H\e[J"
+    # Say what was left out, rather than letting the list just stop.
+    tail_row=$(( top + 10 + shown ))
+    if [ "$overflow" -gt 0 ]; then
+      printf -v more '… and %d more' "$overflow"
+      frame="$frame\e[${tail_row};$(( lc + 2 ))H\e[2;38;5;${accent}m${more}\e[0m\e[K"
+      tail_row=$(( tail_row + 1 ))
+    fi
+    frame="$frame\e[${tail_row};1H\e[J"
 
     printf '%b' "$frame"
     sleep 1

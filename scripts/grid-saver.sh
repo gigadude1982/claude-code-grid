@@ -99,8 +99,13 @@ if [ -z "$saver" ]; then
   # Only for the untargeted path: an explicit argument is someone asking for
   # a specific effect, and `@grid_saver_gate off` turns it off entirely.
   if [ -n "$sess" ] && [ "$(tmux show-options -gv @grid_saver_gate 2>/dev/null)" != off ]; then
-    blocked=$(tmux list-panes -t "$sess" -F '#{@repo} #{@state}' 2>/dev/null \
-      | awk '$1 != "" && $2 == "waiting" { n++ } END { print n + 0 }')
+    # Pipe-delimited, not space-delimited: grid_label only rewrites '/' to '-',
+    # so a repo directory with a space in its name lands in @repo verbatim and
+    # a space-split would read its second word as the state. The gate would
+    # then fail exactly where it matters — silently not switching to standby
+    # for the blocked pane it exists to surface.
+    blocked=$(tmux list-panes -t "$sess" -F '#{@repo}|#{@state}' 2>/dev/null \
+      | awk -F'|' '$1 != "" && $2 == "waiting" { n++ } END { print n + 0 }')
     [ "${blocked:-0}" -gt 0 ] 2>/dev/null && saver=standby
   fi
 fi
@@ -186,5 +191,18 @@ if [ -n "$sess" ] && [ "$away" -ge 60 ] \
         }
         print out
       }')
-  [ -n "$summary" ] && tmux display-message -t "$sess" -d 5000 "$summary" 2>/dev/null
+  # Shown on the client that actually woke, not "the current client". With two
+  # terminals on one session — the normal case here — an untargeted toast lands
+  # wherever you last typed, which may be the terminal that never locked.
+  #
+  # -c is right for this and does NOT contradict the rule that -c cannot
+  # retarget option lookups: that rule is about FORMAT RESOLUTION (@user and
+  # session options resolve against the server's current session regardless),
+  # and this message is a literal string that was fully resolved above. -c only
+  # has to decide which terminal draws it, which is exactly what it does.
+  # client_name is the tty, which is what session_attached_list gave us.
+  if [ -n "$summary" ]; then
+    tmux display-message ${mytty:+-c "$mytty"} -d 5000 "$summary" 2>/dev/null \
+      || tmux display-message -t "$sess" -d 5000 "$summary" 2>/dev/null
+  fi
 fi
