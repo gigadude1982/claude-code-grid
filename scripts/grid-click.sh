@@ -49,10 +49,11 @@ case "$range" in
   # OPTIONS render inside this popup and return to the menu on Esc.
   menu)    popup 92 48 "$SCRIPT_DIR/grid-menu.sh" ;;
   options) popup 92 48 "$SCRIPT_DIR/grid-options.sh" ;;
-  # The ☔ chip rains on the terminal it was clicked in and nowhere else.
-  # `lock-server` locks every attached client, so one tap in one terminal
-  # dropped all of them into the screensaver at once; `lock-client` takes
-  # the event's client and leaves the others alone.
+  # The ☔ chip runs the screensaver on the terminal it was clicked in and
+  # nowhere else. `lock-server` locks every attached client, so one tap in one
+  # terminal dropped all of them into the screensaver at once; `lock-client`
+  # takes the event's client and leaves the others alone. Which effect runs is
+  # grid-saver.sh's business, not the chip's — the action is still "lock".
   rain)   tmux lock-client ${client:+-t "$client"} ;;
   next)   "$SCRIPT_DIR/grid-next.sh" "$session" ;;
   bcast)  tmux set-window-option -t "$pane" synchronize-panes ;;

@@ -25,6 +25,10 @@
 #   @state        idle | working | waiting | done | gone
 #   @state_since  epoch seconds of the last transition
 #
+# Every transition is also appended to $GRID_CONFIG/ledger/<session>.log, which
+# is what the heartbeat screensaver reads — the options above say what a pane is
+# doing now, the ledger says what it has been doing all day.
+#
 # Hook contract: never block, never fail — always exit 0.
 
 state="${1:-idle}"
@@ -85,7 +89,13 @@ fi
 repo=$(tmux display-message -p -t "$TMUX_PANE" '#{@repo}' 2>/dev/null) || exit 0
 [ -n "$repo" ] || exit 0
 
-prev=$(tmux display-message -p -t "$TMUX_PANE" '#{@state}' 2>/dev/null)
+# Session name rides along with the previous state rather than costing a second
+# call: this runs on every PreToolUse, and the ledger below is the only thing
+# that needs it. No grid-lib here for the same reason grid-rollup.sh skips it.
+GRID_CONFIG="${GRID_CONFIG:-$HOME/.config/claude-code-grid}"
+info=$(tmux display-message -p -t "$TMUX_PANE" '#{@state}|#{session_name}' 2>/dev/null)
+prev=${info%%|*}
+sess=${info#*|}
 
 # Don't reset the clock on repeated same-state events — PreToolUse fires once
 # per tool call, and "working 4m" is only useful if it measures the whole
@@ -93,8 +103,25 @@ prev=$(tmux display-message -p -t "$TMUX_PANE" '#{@state}' 2>/dev/null)
 changed=0
 if [ "$prev" != "$state" ]; then
   changed=1
+  now=$(date +%s)
   tmux set-option -p -t "$TMUX_PANE" @state "$state" 2>/dev/null
-  tmux set-option -p -t "$TMUX_PANE" @state_since "$(date +%s)" 2>/dev/null
+  tmux set-option -p -t "$TMUX_PANE" @state_since "$now" 2>/dev/null
+
+  # ── the attention ledger ──
+  # One append-only line per transition: "<epoch> <state> <repo>". This is the
+  # raw material the heartbeat screensaver draws its timeline from, and the
+  # only record of where the day actually went — pane options hold the CURRENT
+  # state and when it started, which forgets every stretch before this one.
+  #
+  # Transitions only, never the repeated same-state events, so a busy pane
+  # costs one line per real change rather than one per tool call. Entirely
+  # best-effort: a hook must never block or fail, so an unwritable ledger
+  # loses a data point, not the user's turn. heartbeat.sh trims the file.
+  if [ -n "$sess" ] && [ "$sess" != "$info" ]; then
+    mkdir -p "$GRID_CONFIG/ledger" 2>/dev/null
+    printf '%s %s %s\n' "$now" "$state" "$repo" \
+      >> "$GRID_CONFIG/ledger/$sess.log" 2>/dev/null
+  fi
 fi
 
 # Tint the pane's frame so a pane that wants you is obvious from across the

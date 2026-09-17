@@ -10,7 +10,7 @@
 #
 # zsh, not bash, on purpose: telling a bare Esc apart from the Esc that opens
 # an arrow-key or mouse sequence needs a sub-second read timeout, and bash
-# 3.2's `read -t` can't go below one second (grid-rain.sh hit the same wall).
+# 3.2's `read -t` can't go below one second (grid-saver.sh hit the same wall).
 # splash.sh set the zsh precedent.
 #
 # Reached via grid-click.sh (prefix+Esc, the ≡ chip, the right-click pane

@@ -163,3 +163,42 @@ grid_repo_list() {
         }' \
     | sort
 }
+
+# ── Screensavers ─────────────────────────────────────────────────────────────
+# The lock-command (grid-saver.sh) is a host: it resolves the client's session,
+# accent and size, then sources scripts/savers/<name>.sh and calls the animate()
+# it defines. Adding a screensaver is adding a file there plus a word below.
+#
+# `random` picks a fresh effect each time the lock fires. The two status
+# screens are left out of that roll on purpose — they're wanted deliberately
+# (or forced by the blocked-pane gate), not as a surprise in a rotation.
+GRID_SAVERS="matrix starfield life pipes fire bounce rain snow standby heartbeat random"
+GRID_SAVERS_RANDOM="matrix starfield life pipes fire bounce rain snow"
+
+# grid_saver_desc <name> — the one-liner the options screen shows.
+grid_saver_desc() {
+  case "$1" in
+    matrix)    printf 'half-width katakana falling in the theme accent' ;;
+    starfield) printf 'warp-speed stars streaming out of the centre' ;;
+    life)      printf "Conway's game of life, cells aging white to accent" ;;
+    pipes)     printf 'box-drawing pipes wandering in the grid palette' ;;
+    fire)      printf 'a fire burning up the screen in the theme accent' ;;
+    bounce)    printf 'the CLAUDE logo bouncing — watch for the corner hit' ;;
+    rain)      printf 'weather: rain on the wind, splashing where it lands' ;;
+    snow)      printf 'weather: snow drifting down and settling in drifts' ;;
+    standby)   printf 'status screen: clock, rollup, every pane and how long it has waited' ;;
+    heartbeat) printf "status screen: the last hour as a timeline — where the day went" ;;
+    random)    printf 'a different effect each time the lock fires' ;;
+    *)         printf '' ;;
+  esac
+}
+
+# grid_saver_step <1|-1> <current> — the neighbour in GRID_SAVERS, wrapping.
+grid_saver_step() {
+  echo "$GRID_SAVERS" | awk -v cur="$2" -v d="$1" '{
+    for (i = 1; i <= NF; i++) if ($i == cur) {
+      n = i + d; if (n < 1) n = NF; if (n > NF) n = 1; print $n; exit
+    }
+    print $1
+  }'
+}
