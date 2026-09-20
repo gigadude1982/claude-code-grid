@@ -175,6 +175,19 @@ grid_repo_list() {
 GRID_SAVERS="matrix starfield life pipes fire bounce rain snow standby heartbeat random"
 GRID_SAVERS_RANDOM="matrix starfield life pipes fire bounce rain snow"
 
+# Effects that can run UNDERNEATH the standby panel (@grid_saver_backdrop), so
+# that the blocked-pane gate costs you the status screen instead of costing you
+# the screensaver. Three things disqualify an effect:
+#
+#   fire, life  — their real worker is an awk process, so they can't be driven
+#                 a frame at a time from the host's loop.
+#   bounce      — composable, but a logo sweeping behind a ledger is a second
+#                 thing to read rather than a texture.
+#   heartbeat   — it is the other status screen; it has no free ground.
+#
+# `random` works here too and rolls from this list.
+GRID_SAVERS_BACKDROP="matrix starfield pipes rain snow"
+
 # grid_saver_desc <name> — the one-liner the options screen shows.
 grid_saver_desc() {
   case "$1" in
@@ -196,6 +209,45 @@ grid_saver_desc() {
 # grid_saver_step <1|-1> <current> — the neighbour in GRID_SAVERS, wrapping.
 grid_saver_step() {
   echo "$GRID_SAVERS" | awk -v cur="$2" -v d="$1" '{
+    for (i = 1; i <= NF; i++) if ($i == cur) {
+      n = i + d; if (n < 1) n = NF; if (n > NF) n = 1; print $n; exit
+    }
+    print $1
+  }'
+}
+
+# What the backdrop picker cycles through. Kept separate from
+# GRID_SAVERS_BACKDROP because "off" and "random" are resolved by the host
+# rather than looked up as files, and the eligibility check must not see them.
+GRID_BACKDROP_CHOICES="off $GRID_SAVERS_BACKDROP random"
+
+# grid_backdrop_step <1|-1> <current> — the neighbour, wrapping.
+grid_backdrop_step() {
+  echo "$GRID_BACKDROP_CHOICES" | awk -v cur="$2" -v d="$1" '{
+    for (i = 1; i <= NF; i++) if ($i == cur) {
+      n = i + d; if (n < 1) n = NF; if (n > NF) n = 1; print $n; exit
+    }
+    print $1
+  }'
+}
+
+# grid_backdrop_desc <name> — the one-liner the options screen shows.
+grid_backdrop_desc() {
+  case "$1" in
+    ''|off|none) printf 'nothing behind the status screen — a plain ground, as before' ;;
+    random)      printf 'a different effect behind the status screen each time it appears' ;;
+    *)           printf '%s running behind the status screen, dimmed to the opacity below' "$1" ;;
+  esac
+}
+
+# The opacity picker's stops. "auto" is the absence of the option, which the
+# host reads as full strength alone and dimmed under a backdrop — a single
+# value could not say both.
+GRID_OPACITY_STEPS="auto 0 15 25 35 50 75 100"
+
+# grid_opacity_step <1|-1> <current> — the neighbour, wrapping.
+grid_opacity_step() {
+  echo "$GRID_OPACITY_STEPS" | awk -v cur="$2" -v d="$1" '{
     for (i = 1; i <= NF; i++) if ($i == cur) {
       n = i + d; if (n < 1) n = NF; if (n > NF) n = 1; print $n; exit
     }
