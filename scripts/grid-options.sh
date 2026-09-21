@@ -47,6 +47,8 @@ opt_names=(
   'party mode'
   'broadcast typing'
   'screensaver'
+  'screensaver backdrop'
+  'screensaver opacity'
   'screensaver delay'
 )
 opt_descs=(
@@ -57,14 +59,17 @@ opt_descs=(
   'cycle through every theme, one every 3s, until toggled off'
   'type into ALL panes at once — the ⇄ chip'
   ''   # filled per-value by desc_of: the description IS the effect's blurb
+  ''   # ditto — the backdrop's blurb describes the pick
+  'how far an effect fades toward the session background; auto dims only under a backdrop'
   'idle time before the screensaver takes every client (server-wide)'
 )
 
-# Row 7's description changes with its value — "starfield" and "standby" want
-# different sentences, and a static line could only describe the row.
+# Rows 7 and 8 describe their VALUE — "starfield" and "standby" want different
+# sentences, and a static line could only describe the row.
 desc_of() {
   case $1 in
-    7) grid_saver_desc "$(value_of 7)" ;;
+    7) grid_saver_desc "$(saver_current)" ;;
+    8) grid_backdrop_desc "$(backdrop_current)" ;;
     *) print -r -- "${opt_descs[$1]}" ;;
   esac
 }
@@ -77,6 +82,24 @@ saver_current() {
   [ -n "$s" ] || s=$(cat "$GRID_CONFIG/saver.$sess" 2>/dev/null)
   [ -n "$s" ] || s=$(tmux show-options -gv @grid_saver 2>/dev/null)
   print -r -- "${s:-matrix}"
+}
+
+# Same order again for the backdrop and the opacity, both of which the host
+# resolves session option -> file -> global. The file is what carries the
+# choice across a tmux server restart, since options don't.
+backdrop_current() {
+  local b=$(tmux show-options -v -t "$sess" @grid_saver_backdrop 2>/dev/null)
+  [ -n "$b" ] || b=$(cat "$GRID_CONFIG/backdrop.$sess" 2>/dev/null)
+  [ -n "$b" ] || b=$(tmux show-options -gv @grid_saver_backdrop 2>/dev/null)
+  case "$b" in (''|none) b=off ;; esac
+  print -r -- "$b"
+}
+
+opacity_current() {
+  local v=$(tmux show-options -v -t "$sess" @grid_saver_opacity 2>/dev/null)
+  [ -n "$v" ] || v=$(cat "$GRID_CONFIG/opacity.$sess" 2>/dev/null)
+  [ -n "$v" ] || v=$(tmux show-options -gv @grid_saver_opacity 2>/dev/null)
+  print -r -- "${v:-auto}"
 }
 
 # The rain delays on offer, in seconds. 0 = never.
@@ -125,6 +148,21 @@ value_of() {
       saver_current
       ;;
     8)
+      # Said plainly when it cannot apply: the backdrop only ever shows under
+      # the status screen, and a row reading "matrix" while the session is set
+      # to run fire would be a straight lie about what the lock will do.
+      local b=$(backdrop_current)
+      if [ "$b" = off ] || [ "$(saver_current)" = standby ]; then
+        print -r -- "$b"
+      else
+        print -r -- "$b (idle)"
+      fi
+      ;;
+    9)
+      local v=$(opacity_current)
+      if [ "$v" = auto ]; then print 'auto'; else print -r -- "${v}%"; fi
+      ;;
+    10)
       rain_label "$(tmux show-options -gv lock-after-time 2>/dev/null)"
       ;;
   esac
@@ -186,6 +224,26 @@ change() { # change <index> <1|-1>
       print -r -- "$nxt" > "$GRID_CONFIG/saver.$sess"
       ;;
     8)
+      local nxt=$(grid_backdrop_step $dir "$(backdrop_current)")
+      tmux set-option -t "$sess" @grid_saver_backdrop "$nxt" 2>/dev/null
+      mkdir -p "$GRID_CONFIG"
+      print -r -- "$nxt" > "$GRID_CONFIG/backdrop.$sess"
+      ;;
+    9)
+      # "auto" is the ABSENCE of the option, so it is stored by removing it
+      # rather than by writing the word — the host's own default then applies,
+      # which is the whole point of the setting.
+      local nxt=$(grid_opacity_step $dir "$(opacity_current)")
+      mkdir -p "$GRID_CONFIG"
+      if [ "$nxt" = auto ]; then
+        tmux set-option -t "$sess" -u @grid_saver_opacity 2>/dev/null
+        rm -f "$GRID_CONFIG/opacity.$sess"
+      else
+        tmux set-option -t "$sess" @grid_saver_opacity "$nxt" 2>/dev/null
+        print -r -- "$nxt" > "$GRID_CONFIG/opacity.$sess"
+      fi
+      ;;
+    10)
       local cur=$(tmux show-options -gv lock-after-time 2>/dev/null) i=1 n=${#rain_steps}
       for (( i = 1; i <= n; i++ )); do [ "${rain_steps[i]}" = "${cur:-600}" ] && break; done
       (( i > n )) && i=4          # unknown value: treat as the 10m default

@@ -217,11 +217,49 @@ toasts the difference — `away 14m · ✔ 2 finished · ▲ smoothieking-ui blo
 
 ![The matrix-rain screensaver](docs/images/screensaver.png)
 
-Adding another is a file: `scripts/savers/<name>.sh` defining an `animate()`,
-plus the name in `GRID_SAVERS` (`scripts/grid-lib.sh`). The host —
-`scripts/grid-saver.sh`, which tmux runs as its `lock-command` — has already
-worked out the session, its accent, the real terminal size, the alternate
+### Rain behind the clock
+
+The gate above has an obvious cost: a blocked pane takes away the screensaver
+you actually picked. `@grid_saver_backdrop` gives it back. Name an effect —
+`matrix`, `starfield`, `pipes`, `rain`, `snow`, or `random` — and it runs
+*underneath* the standby panel, which floats on it. `off` is the default, and
+it applies to `standby` only; `heartbeat` fills the width with data and has no
+ground to show anything through.
+
+`@grid_saver_opacity` is what makes that readable. There is no alpha on a
+terminal — a cell holds one glyph in one colour and whatever was under it is
+gone — so what it really does is fade the effect toward the session's own
+`@theme_bg`: `100` is exactly how the savers have always looked, `0` is the
+background, and the ocean grid fades into navy while the nosferatu grid fades
+into black. Left unset it means *full strength alone, dimmed under the panel*,
+because a single number could not say both. It works on any effect, so it is
+also just a dimmer for a dark room. Both settings sit in the options screen
+under the saver row, and both survive a server restart.
+
+Blending happens in RGB and comes out as truecolor where the terminal admits to
+it, and as the nearest cell of the xterm 6×6×6 cube otherwise — the lock command
+writes straight to the client's tty, so tmux's `RGB` override is not the thing
+that decides. On the cube path neighbouring brightness levels can quantize onto
+the same colour below about 50%, which is why each level also carries the faint
+or bold attribute the savers used to spell by hand.
+
+### Adding one
+
+A saver is a file — `scripts/savers/<name>.sh` — plus the name in
+`GRID_SAVERS` (`scripts/grid-lib.sh`). The host, `scripts/grid-saver.sh`, is
+what tmux runs as its `lock-command`, and it has already worked out the
+session, its accent and background, the real terminal size, the alternate
 screen and the wake-on-any-key before it sources yours.
+
+Define either `animate()` — your own loop, which is what an effect whose real
+worker is an awk process has to do — or the composable contract: `SAVER_DELAY`
+plus `saver_begin` and `saver_frame`, where `saver_frame` appends one frame's
+escapes to `$frame` and the host owns the loop. Only the second kind can be a
+backdrop, because a composite has to be one process: two loops writing to one
+tty interleave mid-escape-sequence and paint garbage. Draw with `${SAV_SGR[0]}`
+through `[3]` (faint, body, near, hot) so opacity reaches you for free, guard
+each write with `sav_hidden <y> <x>` so you keep out of the panel, and add the
+name to `GRID_SAVERS_BACKDROP`.
 
 ## Install
 
