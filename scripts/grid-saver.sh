@@ -301,18 +301,23 @@ sav_blend() {
 # onto the SAME cube cell, and without the attribute a dimmed matrix would have
 # a trail and a head in identical colour with nothing between them. Faint and
 # bold keep the depth when the palette runs out of room to.
+#
+# Every level also starts with a 0 reset. SGR attributes are sticky, so a bare
+# "38;2;…" written after a bold head inherits the bold, and within a second the
+# whole screen is bold. That is invisible on ASCII and fatal on matrix: the
+# bold face has no half-width katakana and every glyph turns into tofu.
 SAV_SGR=('' '' '' '')
 sav_ramp() {
   local i br bgc bb ar ag ab pre
   sav_rgb "$bg";     br=$SAV_R bgc=$SAV_G bb=$SAV_B
   sav_rgb "$accent"; ar=$SAV_R ag=$SAV_G  ab=$SAV_B
   for i in 0 1 2 3; do
-    pre=''
+    pre='0;'
     case $i in
-      0) sav_blend $ar $ag $ab $br $bgc $bb 45; pre='2;' ;;
+      0) sav_blend $ar $ag $ab $br $bgc $bb 45; pre='0;2;' ;;
       1) SAV_R=$ar SAV_G=$ag SAV_B=$ab ;;
-      2) sav_blend 255 255 255 $ar $ag $ab 45;  pre='1;' ;;
-      3) SAV_R=255 SAV_G=255 SAV_B=255;         pre='1;' ;;
+      2) sav_blend 255 255 255 $ar $ag $ab 45;  pre='0;1;' ;;
+      3) SAV_R=255 SAV_G=255 SAV_B=255;         pre='0;1;' ;;
     esac
     # Opacity applies to every level equally. Fading the trail but not the head
     # would only change the contrast within the effect; the point is to change
