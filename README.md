@@ -306,6 +306,35 @@ Two clients on one grid is fine: `window-size latest` (tmux's default) sizes
 the grid to whichever client typed last, so the phone doesn't pin the Mac's
 grid at phone size.
 
+### When the Mac can't take incoming connections
+
+On a managed Mac where Remote Login is locked, a **VS Code tunnel** works
+instead: the Mac connects out (`code tunnel service install`), and the phone
+opens it in a browser at vscode.dev. Out of the box that's an editor with a
+terminal hidden in a menu. Open `remote/vscode-tunnel/` instead and it goes
+straight to the grid:
+
+```
+https://vscode.dev/tunnel/<tunnel-name>/Users/<you>/dev/claude-code-grid/remote/vscode-tunnel
+```
+
+That folder's `.vscode/` has a task that runs on open (`tmux attach`, or
+`pdev` if no grid is up) and settings that hand the terminal the whole screen:
+maximized panel, no welcome page, no chat sidebar, no activity bar. They're
+workspace settings, so they apply on any device.
+
+First open, once per browser:
+
+- **Trust the folder.** Until you do, it opens in Restricted Mode and the task
+  silently never runs. If no prompt appears, click the *Restricted Mode* chip
+  bottom-left. Allow automatic tasks too if it asks.
+- **Close the Explorer and Chat** (the layout buttons top-right, or Cmd+B /
+  Cmd+Option+B). VS Code saves panel layout per folder per browser and that
+  saved layout beats settings, so this can't be done from `settings.json`.
+  It sticks after the first time.
+
+Then bookmark the URL, or add it to the phone's home screen.
+
 ## Install
 
 The repo has to live at `~/dev/claude-code-grid` — the tmux config and the
@@ -464,6 +493,7 @@ scripts/         the engine + helpers (all standalone, no state in-repo)
 zsh/grid.zsh     pdev/wdev command families, claude_tracked launcher
 tmux/grid.tmux.conf
 config/ntfy.conf.template
+remote/vscode-tunnel/  open this over a VS Code tunnel → straight into the grid, full screen
 docs/images/     the screenshots in this README
 install.sh
 ```

@@ -1,0 +1,38 @@
+{
+  // Opening this folder over a VS Code tunnel drops you straight into the
+  // grid: no welcome page, no hunting for the terminal menu on a phone.
+  //
+  //   https://vscode.dev/tunnel/<tunnel-name>/Users/<you>/dev/claude-code-grid/remote/vscode-tunnel
+  //
+  // The first open asks two one-time questions: trust this folder, and allow
+  // automatic tasks. Say yes to both or the task below never runs.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "grid",
+      // Attach to whichever grid you touched last (bare `tmux attach` picks the
+      // most recently used session). If none is running, start the personal
+      // one. pdev is a zsh function from ~/.zshrc, so this needs an
+      // interactive login shell, not the task runner's default sh -c.
+      "type": "shell",
+      "command": "tmux attach 2>/dev/null || pdev",
+      "options": {
+        "shell": { "executable": "/bin/zsh", "args": ["-l", "-i", "-c"] }
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "echo": false,
+        "clear": true,
+        "showReuseMessage": false,
+        // Detaching (prefix+d) closes the terminal rather than leaving a
+        // dead "press any key" tab behind. Reload the page to reattach.
+        "close": true
+      },
+      "runOptions": { "runOn": "folderOpen" }
+    }
+  ]
+}

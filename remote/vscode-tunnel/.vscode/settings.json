@@ -1,0 +1,23 @@
+{
+  // Everything here exists to give the terminal the whole screen. These are
+  // workspace settings, so they live on the Mac and apply on any device that
+  // opens this folder, with no per-browser setup.
+
+  // The terminal panel takes the full height instead of a bottom strip.
+  "workbench.panel.opensMaximized": "always",
+
+  // No welcome page, no chat sidebar, no command-center search box. The
+  // sidebar settings only win on a browser's first open of this folder: after
+  // that VS Code restores its saved layout, so close Explorer / Chat by hand
+  // once and it remembers.
+  "workbench.startupEditor": "none",
+  "workbench.secondarySideBar.defaultVisibility": "hidden",
+  "chat.commandCenter.enabled": false,
+  "window.commandCenter": false,
+  "workbench.activityBar.location": "hidden",
+  "workbench.layoutControl.enabled": false,
+
+  // Don't revive the old terminal on reload. The folderOpen task already
+  // reattaches, and a revived one would be a second, stale client.
+  "terminal.integrated.enablePersistentSessions": false
+}
