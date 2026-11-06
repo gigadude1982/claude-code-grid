@@ -319,9 +319,11 @@ https://vscode.dev/tunnel/<tunnel-name>/Users/<you>/dev/claude-code-grid/remote/
 ```
 
 That folder's `.vscode/` has a task that runs on open (`tmux attach`, or
-`pdev` if no grid is up) and settings that hand the terminal the whole screen:
-maximized panel, no welcome page, no chat sidebar, no activity bar. They're
-workspace settings, so they apply on any device.
+`pdev` if no grid is up) and settings that maximize the terminal panel and skip
+the welcome page. They're workspace settings, so they apply on any device. A
+workspace can't hide the activity bar, command center, or layout buttons
+(vscode.dev ignores those at folder level), so set them in your own user
+settings if you want that chrome gone too.
 
 First open, once per browser:
 
