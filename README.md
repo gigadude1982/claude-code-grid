@@ -45,6 +45,7 @@ profile (`CLAUDE_CONFIG_DIR=~/.claude-<profile>`):
 | `pdev-pick` / `wdev-pick`   | fzf multi-select which repos get panes (tab = toggle, enter = launch); remembered for next time. With the grid already running it adds the new picks as panes instead of relaunching |
 | `pdev-stop` / `wdev-stop`   | tear down + safe-prune the worktrees this grid created                                                   |
 | `pdev-sweep` / `wdev-sweep` | safe-prune **every** worktree on disk for the grid's repos, tracked or not — runs with the session up, down, or never launched |
+| `grid-remote`               | check this Mac is reachable from a phone/iPad and print the connect command — see [From a phone or iPad](#from-a-phone-or-ipad) |
 | `grid-add [repo]`           | give another repo a pane without rebuilding the grid                                                     |
 | `grid-drop`                 | close the current pane's repo                                                                            |
 | `grid-layout [name]`        | how the panes sit: `tiled` (default), `columns` (side by side), `rows` (stacked), `main-left`, `main-top`; bare cycles. Per session, remembered, also `prefix+Space` and the `▦` chip |
@@ -261,6 +262,50 @@ through `[3]` (faint, body, near, hot) so opacity reaches you for free, guard
 each write with `sav_hidden <y> <x>` so you keep out of the panel, and add the
 name to `GRID_SAVERS_BACKDROP`.
 
+## From a phone or iPad
+
+The grid is already built for touch (chips, the `≡` menu, `▲▼` page chips),
+so the remote story is just a transport: **Tailscale** to reach the Mac
+without opening ports, and **mosh** so the session survives wifi drops and
+wifi↔cellular handoffs, which plain SSH doesn't. Connect from Blink Shell or
+Termius, type `pdev`, and you're attached to the same grid the Mac shows.
+
+Every link in that chain fails silently from the phone ("connection refused",
+or a spinner), so `grid-remote` checks them on the Mac and names the broken
+one:
+
+```
+▸ grid-remote  checking my-mac
+
+  ✓ Tailscale     connected as my-mac.tail1234.ts.net (100.101.102.103)
+  ✓ Remote Login  sshd is listening on :22
+  ✓ mosh          /opt/homebrew/bin/mosh-server (1.4.0)
+  ✗ Firewall      on, and mosh-server has no allow rule (UDP will be dropped)
+      → sudo …/socketfilterfw --add …/mosh-server && sudo …/socketfilterfw --unblockapp …
+  ! Power         on battery; it will sleep, and with the lid closed it's unreachable
+```
+
+It changes nothing itself. Every fix needs sudo or a GUI click, and on a
+managed machine some of them are policy calls. Once everything passes it prints
+the exact `mosh --server=… user@host` line to put in the phone's client.
+
+Three things it catches that cost the most time:
+
+- **The firewall.** Homebrew's `mosh-server` is only ad-hoc signed, so
+  "allow signed software" doesn't cover it. The Mac pops an allow/deny prompt
+  nobody is there to click, and the phone sits on *Nothing received from
+  server*. The rule is keyed on the Cellar path, so `brew upgrade mosh` needs it
+  re-added.
+- **PATH.** A non-interactive SSH login doesn't have `/opt/homebrew/bin`, so
+  the client has to be told where `mosh-server` lives (`--server=`, or Blink's
+  per-host *Mosh Server* field).
+- **Sleep.** No tunnel reaches a sleeping Mac. On a laptop that means on the
+  charger and awake (`caffeinate -s`); closing the lid ends it.
+
+Two clients on one grid is fine: `window-size latest` (tmux's default) sizes
+the grid to whichever client typed last, so the phone doesn't pin the Mac's
+grid at phone size.
+
 ## Install
 
 The repo has to live at `~/dev/claude-code-grid` — the tmux config and the
@@ -405,6 +450,7 @@ scripts/         the engine + helpers (all standalone, no state in-repo)
   grid-menu.sh     prefix+Esc / F1 / ≡ main menu — OPTIONS / HELP / QUIT, btop-style
   grid-options.sh  the options screen: theme, title, layout, mute, party, broadcast, rain
   grid-restore.sh  post-reboot relaunch with --continue
+  grid-remote.sh   remote-access doctor: Tailscale / sshd / mosh / firewall / sleep
 
   claude-notify.sh      Claude hook → macOS banner + ntfy push, classified by
                         event (Stop/StopFailure/Notification type)
@@ -544,7 +590,8 @@ Developed and tested on tmux 3.7, which is the only version any of this has
 actually been run against.
 Notifications need `terminal-notifier`; the usage readout, the `Σ` spend chip
 and the borders' model/cost need claude-status-line's statusline (all
-optional — each degrades to nothing). Linux would need light porting
+optional — each degrades to nothing). Remote access from a phone needs
+Tailscale and `mosh` (also optional; `grid-remote` says what's missing). Linux would need light porting
 (`ioreg`, `terminal-notifier`, `getconf DARWIN_USER_TEMP_DIR`).
 
 ## License
