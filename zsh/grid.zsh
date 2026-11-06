@@ -17,6 +17,9 @@
 #   pdev-sweep / wdev-sweep  safe-prune EVERY worktree sitting on disk for
 #                          the grid's repos, tracked or not (run any time,
 #                          session up or down — doesn't touch tmux)
+#   grid-remote            check this Mac can be reached from a phone/iPad
+#                          (Tailscale, Remote Login, mosh, firewall, sleep)
+#                          and print the exact connect command
 #
 # Inside a running grid (also bound to prefix keys — see tmux/grid.tmux.conf):
 #   grid-add [repo]        give another repo a pane without rebuilding
@@ -148,6 +151,7 @@ wdev()       { _grid_launch work "$GRID_WORK_ROOT" "$GRID_WORK_PROFILE"; }
 wdev-pick()  { _grid_pick   work "$GRID_WORK_ROOT" "$GRID_WORK_PROFILE"; }
 wdev-stop()  { _grid_stop   work; }
 wdev-sweep() { "$GRID_DIR/scripts/grid-sweep.sh" work; }
+grid-remote() { "$GRID_DIR/scripts/grid-remote.sh" "$@"; }
 
 # In-grid commands. These read the grid's configuration off the tmux session,
 # so they only mean anything from inside a pane — which is also the only
