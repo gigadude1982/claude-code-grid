@@ -347,6 +347,28 @@ sav_sgr_idx() {
 
 sav_ramp
 
+# ── Sound and high scores, for the arcade savers ─────────────────────────────
+# sav_sound <name> is what a saver calls on an event; it is a no-op unless
+# @grid_saver_sound asks for noise (see grid-sound.sh for levels and why it is
+# off by default). Resolved here, once, so a saver never forks tmux mid-frame.
+. "$SCRIPT_DIR/grid-sound.sh"
+sav_sound_init "$sess"
+
+# sav_hiscore <game> — the best score this machine has seen, or 0.
+# sav_hiscore_save <game> <score> — keep it if it beats that. Written at game
+# over and level clears rather than per point: the animation is killed, not
+# asked to stop, when the screensaver ends, so there's no last chance to save.
+sav_hiscore() {
+  local h
+  h=$(cat "$GRID_CONFIG/hiscore.$1" 2>/dev/null)
+  case "$h" in (''|*[!0-9]*) h=0 ;; esac
+  echo "$h"
+}
+sav_hiscore_save() {
+  [ "$2" -gt "$(sav_hiscore "$1")" ] 2>/dev/null || return 0
+  mkdir -p "$GRID_CONFIG" 2>/dev/null && echo "$2" > "$GRID_CONFIG/hiscore.$1"
+}
+
 # ── The keep-out rectangle ───────────────────────────────────────────────────
 # A composite could redraw the panel on top of the backdrop every frame, but
 # that is 2.5KB of ledger sixteen times a second on a link that is sometimes a

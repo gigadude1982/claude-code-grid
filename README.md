@@ -119,7 +119,7 @@ has a cost stamped on it.
 | `⛶ ▦ 🔔 ☔ 🐇 🎉 ⇄` (right) | zoom · pane layout · mute notifications 1h · screensaver now (this terminal only) · jump to the neediest pane · party mode · broadcast | `🔕` while muted; the chip flips back on its own |
 | `▦`                  | the layout menu — tiled / columns / rows / main-left / main-top | scroll it to cycle, same as `prefix+Space` |
 | `theme: <name>`      | the theme menu                                           |                                               |
-| `≡`                  | the main menu — options / help / quit                    | options gathers theme, title, pane layout, mute, party, broadcast, screensaver + its delay in one place |
+| `≡`                  | the main menu — options / help / quit                    | options gathers theme, title, pane layout, mute, party, broadcast, screensaver + its delay and sound in one place; `p` previews the saver |
 | `?`                  | the cheatsheet                                           |                                               |
 | a pane               | right-click for every grid action on that pane           |                                               |
 | a pane's border      | right-click to recolor that repo (remembered across launches) |                                          |
@@ -179,9 +179,40 @@ Which one is per session, on the options screen under **screensaver**:
 | `bounce`    | the CLAUDE logo, recolouring on every wall, with a running tally of exact corner hits |
 | `rain`      | weather: drops leaning on a wind that swings, splashing where they land |
 | `snow`      | weather: flakes that drift, settle into drifts, slump when a drift gets too steep, and eventually thaw |
+| `volley`    | arcade: two machines play paddle tennis to 11, big score digits, the rally quickening every fourth return |
+| `bricks`    | arcade: a paddle knocks down a wall of palette-coloured bricks, each row its own note; three lives, faster every level |
+| `invasion`  | arcade: a formation marches down on one cannon over crumbling bunkers, to a four-note bass line that speeds up as it thins; a saucer crosses now and then |
+| `serpent`   | arcade: a snake hunts food until it ties itself in a knot, flashes, and starts over |
 | `standby`   | the status screen — see below |
 | `heartbeat` | the last hour as a timeline — see below |
-| `random`    | a different effect each lock; rolls the eight above, never the two status screens |
+| `random`    | a different effect each lock; rolls the twelve above, never the two status screens |
+
+`p` on the options screen previews the selected saver right there in the
+popup; any key comes back.
+
+### The arcade
+
+The four arcade savers play themselves, and play *imperfectly* on purpose — a
+paddle that never misses rallies forever, and a screensaver that never changes
+is a still image. So each machine picks where on itself it means to meet the
+ball, and now and then picks wrong; the cannon dodges bombs but only ever has
+one shot in the air; the snake is greedy with one cell of lookahead and
+eventually traps itself. High scores are kept in `$GRID_CONFIG/hiscore.<game>`.
+
+They make noise if you ask. **screensaver sound** on the options screen
+(`@grid_saver_sound`) is `off` by default — a terminal that starts beeping ten
+minutes after you leave your desk is not a surprise anyone wants — and the 🔔
+mute chip silences it like everything else:
+
+| | |
+|---|---|
+| `low` `med` `high` | chiptune — square waves, sweeps and noise, synthesised once by `scripts/grid-sound.sh` into `$GRID_CONFIG/sounds` (needs `perl`; played with `afplay`, or `paplay`/`aplay` on Linux) |
+| `bell` | a terminal bell on points, lives and levels only |
+
+The chiptune plays on **the machine running tmux**. From an iPad through the
+VS Code tunnel, that's the Mac on the other end — use `bell` there: the lock
+command writes straight to the client's tty, so the bell rings on the screen
+in front of you. `scripts/grid-sound.sh test` plays the whole bank.
 
 ### The two that earn their keep
 
@@ -261,6 +292,12 @@ tty interleave mid-escape-sequence and paint garbage. Draw with `${SAV_SGR[0]}`
 through `[3]` (faint, body, near, hot) so opacity reaches you for free, guard
 each write with `sav_hidden <y> <x>` so you keep out of the panel, and add the
 name to `GRID_SAVERS_BACKDROP`.
+
+For noise, call `sav_sound <name>` with a name from the bank in
+`scripts/grid-sound.sh` (or add one there — a sound is a line of segments, and
+bumping `GRID_SOUND_VERSION` re-renders the bank). It costs one comparison when
+sound is off, so call it freely. `sav_hiscore <game>` and
+`sav_hiscore_save <game> <score>` keep a best score on disk.
 
 ## From a phone or iPad
 
@@ -409,8 +446,9 @@ source ~/dev/claude-code-grid/zsh/grid.zsh
 - **Per-session themes** — fourteen, chosen from a menu or cycled with the
   scroll wheel, remembered per session across restarts, with a party mode
   that walks them. A ten-minute idle timer (or `Ctrl-\`) drops every client
-  into one of ten screensavers in the active accent — matrix rain, starfield,
-  life, pipes, fire, a bouncing logo, rain, snow — or the two that show the
+  into one of fourteen screensavers in the active accent — matrix rain,
+  starfield, life, pipes, fire, a bouncing logo, rain, snow, four self-playing
+  arcade games with optional chiptune sound — or the two that show the
   grid's state at size instead of hiding it, and toast what you missed on the
   way back out.
 - **Account usage in the status bar** — 5-hour and 7-day plan windows with
@@ -470,7 +508,9 @@ scripts/         the engine + helpers (all standalone, no state in-repo)
   grid-color.sh    per-repo border colour menu, persisted per session
   grid-saver.sh    the screensaver host (tmux lock-command); grid-rain.sh is an alias
   savers/*.sh      one file per effect: matrix, starfield, life, pipes, fire,
-                   bounce, rain, snow, plus standby + heartbeat, the status screens
+                   bounce, rain, snow, the arcade (volley, bricks, invasion,
+                   serpent), plus standby + heartbeat, the status screens
+  grid-sound.sh    chiptune bank for the arcade savers: synth, cache, play
   grid-next.sh     prefix+n / 🐇 attention queue
   grid-mark.sh     ⦿ mark a pane for targeted broadcast
   grid-add/drop.sh reshape a live grid
@@ -505,7 +545,9 @@ picker selection), `<session>.env` (root/profile, for restore),
 `<session>.worktrees` (tracked worktrees), `<session>.colors` (hand-picked
 repo colours), `theme.<session>` (chosen theme), `saver.<session>` (chosen
 screensaver — a file as well as an option, because tmux options don't survive a
-server restart), `layout.<session>` (chosen pane arrangement),
+server restart), `sound.<session>` (screensaver sound level), `sounds/`
+(the synthesised chiptune bank), `hiscore.<game>` (arcade high scores),
+`layout.<session>` (chosen pane arrangement),
 `ledger/<session>.log` (every pane state transition, appended by
 `pane-state.sh`, read by the `heartbeat` screensaver, trimmed when it passes
 5000 lines), `<session>.board.md` (shared board), `<session>.log` (prune

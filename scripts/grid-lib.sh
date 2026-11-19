@@ -172,8 +172,8 @@ grid_repo_list() {
 # `random` picks a fresh effect each time the lock fires. The two status
 # screens are left out of that roll on purpose — they're wanted deliberately
 # (or forced by the blocked-pane gate), not as a surprise in a rotation.
-GRID_SAVERS="matrix starfield life pipes fire bounce rain snow standby heartbeat random"
-GRID_SAVERS_RANDOM="matrix starfield life pipes fire bounce rain snow"
+GRID_SAVERS="matrix starfield life pipes fire bounce rain snow volley bricks invasion serpent standby heartbeat random"
+GRID_SAVERS_RANDOM="matrix starfield life pipes fire bounce rain snow volley bricks invasion serpent"
 
 # Effects that can run UNDERNEATH the standby panel (@grid_saver_backdrop), so
 # that the blocked-pane gate costs you the status screen instead of costing you
@@ -184,6 +184,8 @@ GRID_SAVERS_RANDOM="matrix starfield life pipes fire bounce rain snow"
 #   bounce      — composable, but a logo sweeping behind a ledger is a second
 #                 thing to read rather than a texture.
 #   heartbeat   — it is the other status screen; it has no free ground.
+#   the arcade  — volley, bricks, invasion, serpent: composable, but a game is
+#                 a thing to watch, and it would play out under the panel.
 #
 # `random` works here too and rolls from this list.
 GRID_SAVERS_BACKDROP="matrix starfield pipes rain snow"
@@ -199,6 +201,10 @@ grid_saver_desc() {
     bounce)    printf 'the CLAUDE logo bouncing — watch for the corner hit' ;;
     rain)      printf 'weather: rain on the wind, splashing where it lands' ;;
     snow)      printf 'weather: snow drifting down and settling in drifts' ;;
+    volley)    printf 'arcade: two machines play paddle tennis, first to 11' ;;
+    bricks)    printf 'arcade: a paddle breaks down a wall, faster every level' ;;
+    invasion)  printf 'arcade: a marching formation vs. one cannon — turn the sound on' ;;
+    serpent)   printf 'arcade: a snake hunts food until it ties itself in a knot' ;;
     standby)   printf 'status screen: clock, rollup, every pane and how long it has waited' ;;
     heartbeat) printf "status screen: the last hour as a timeline — where the day went" ;;
     random)    printf 'a different effect each time the lock fires' ;;
