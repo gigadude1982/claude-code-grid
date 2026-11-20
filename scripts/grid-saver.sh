@@ -369,6 +369,28 @@ sav_hiscore_save() {
   mkdir -p "$GRID_CONFIG" 2>/dev/null && echo "$2" > "$GRID_CONFIG/hiscore.$1"
 }
 
+# sav_hud <left> <right> <right width> <middle> [shorter middle] — row 1 as a
+# scoreboard, appended to $frame. The middle is centred, but never allowed to
+# run into either end: on a narrow pane a centred "HI 01050  LEVEL 2" landed
+# on top of the score. It falls back to the shorter middle, then to nothing.
+# The right width is passed in because the right side is glyphs (● ▲), whose
+# ${#} is bytes on bash 3.2 in some locales.
+sav_hud() {
+  local left=$1 right=$2 rw=$3 mid=$4 short=${5:-} lo hi mc
+  lo=$(( ${#left} + 3 ))
+  hi=$(( cols - rw - 2 ))
+  if [ $(( hi - lo + 1 )) -lt "${#mid}" ]; then mid=$short; fi
+  if [ $(( hi - lo + 1 )) -lt "${#mid}" ]; then mid=''; fi
+  frame="${frame}\e[1;1H\e[2K\e[${SAV_SGR[1]}m ${left}"
+  if [ -n "$mid" ]; then
+    mc=$(( (cols - ${#mid}) / 2 + 1 ))
+    [ "$mc" -lt "$lo" ] && mc=$lo
+    [ $(( mc + ${#mid} - 1 )) -gt "$hi" ] && mc=$(( hi - ${#mid} + 1 ))
+    frame="${frame}\e[1;${mc}H${mid}"
+  fi
+  frame="${frame}\e[1;$(( cols - rw ))H${right}\e[0m"
+}
+
 # ── The keep-out rectangle ───────────────────────────────────────────────────
 # A composite could redraw the panel on top of the backdrop every frame, but
 # that is 2.5KB of ledger sixteen times a second on a link that is sometimes a

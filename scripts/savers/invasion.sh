@@ -202,12 +202,13 @@ inv_gameover() {
 }
 
 inv_hud() {
-  local s l lv="" i=0 hs
+  local s l ls lv="" i=0 hs
   while [ "$i" -lt "$lives" ]; do lv="${lv}▲ "; i=$(( i + 1 )); done
   hs=$hi; [ "$score" -gt "$hs" ] && hs=$score
-  s=$(printf 'SCORE %05d' "$score")
-  l=$(printf 'HI %05d   WAVE %d' "$hs" "$wave")
-  frame="$frame\e[1;1H\e[2K\e[${SAV_SGR[1]}m $s\e[1;$(( (cols - ${#l}) / 2 + 1 ))H$l\e[1;$(( cols - 7 ))H$lv\e[0m"
+  printf -v s 'SCORE %05d' "$score"
+  printf -v l 'HI %05d   WAVE %d' "$hs" "$wave"
+  printf -v ls 'W%d' "$wave"
+  sav_hud "$s" "$lv" 7 "$l" "$ls"
 }
 
 # inv_hit_alien <col> <row> — is there a living alien under that cell? Sets

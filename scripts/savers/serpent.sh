@@ -77,8 +77,11 @@ sp_free() {
 sp_hud() {
   local s b=$best
   [ "$len" -gt "$b" ] && b=$len
-  s=$(printf 'LENGTH %3d   BEST %3d   EATEN %3d' "$len" "$b" "$eaten")
-  frame="$frame\e[1;$(( (cols - ${#s}) / 2 + 1 ))H\e[${SAV_SGR[1]}m$s\e[0m"
+  printf -v s 'LENGTH %3d   BEST %3d   EATEN %3d' "$len" "$b" "$eaten"
+  [ "${#s}" -gt "$cols" ] && printf -v s 'LEN %d  BEST %d' "$len" "$b"
+  # Cleared first: the line shrinks when a long snake dies, and a centred
+  # shorter string would leave the old one's ends showing either side.
+  frame="$frame\e[1;1H\e[2K\e[1;$(( (cols - ${#s}) / 2 + 1 ))H\e[${SAV_SGR[1]}m$s\e[0m"
 }
 
 saver_frame() {

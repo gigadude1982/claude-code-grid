@@ -104,12 +104,13 @@ br_at() {
 }
 
 br_hud() {
-  local s l lv="" i=0 hs
+  local s l ls lv="" i=0 hs
   while [ "$i" -lt "$lives" ]; do lv="${lv}● "; i=$(( i + 1 )); done
   hs=$hi; [ "$score" -gt "$hs" ] && hs=$score
-  s=$(printf 'SCORE %05d' "$score")
-  l=$(printf 'HI %05d   LEVEL %d' "$hs" "$level")
-  frame="$frame\e[1;1H\e[2K\e[${SAV_SGR[1]}m $s\e[1;$(( (cols - ${#l}) / 2 + 1 ))H$l\e[1;$(( cols - 7 ))H$lv\e[0m"
+  printf -v s 'SCORE %05d' "$score"
+  printf -v l 'HI %05d   LEVEL %d' "$hs" "$level"
+  printf -v ls 'LV %d' "$level"
+  sav_hud "$s" "$lv" 7 "$l" "$ls"
 }
 
 saver_frame() {
