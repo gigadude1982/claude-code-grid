@@ -119,7 +119,7 @@ has a cost stamped on it.
 | `⛶ ▦ 🔔 ☔ 🐇 🎉 ⇄` (right) | zoom · pane layout · mute notifications 1h · screensaver now (this terminal only) · jump to the neediest pane · party mode · broadcast | `🔕` while muted; the chip flips back on its own |
 | `▦`                  | the layout menu — tiled / columns / rows / main-left / main-top | scroll it to cycle, same as `prefix+Space` |
 | `theme: <name>`      | the theme menu                                           |                                               |
-| `≡`                  | the main menu — options / help / quit                    | options gathers theme, title, pane layout, mute, party, broadcast, screensaver + its delay and sound in one place; `p` previews the saver |
+| `≡`                  | the main menu — options / help / quit                    | options gathers theme, title, pane layout, mute, party, broadcast, screensaver + its delay and sound in one place; **▶ preview** (or `p`) runs the saver |
 | `?`                  | the cheatsheet                                           |                                               |
 | a pane               | right-click for every grid action on that pane           |                                               |
 | a pane's border      | right-click to recolor that repo (remembered across launches) |                                          |
@@ -187,8 +187,8 @@ Which one is per session, on the options screen under **screensaver**:
 | `heartbeat` | the last hour as a timeline — see below |
 | `random`    | a different effect each lock; rolls the twelve above, never the two status screens |
 
-`p` on the options screen previews the selected saver right there in the
-popup; any key comes back.
+The **▶ preview** button on the options screen (or `p`) runs the selected
+saver right there in the popup; any key or click comes back.
 
 ### The arcade
 
