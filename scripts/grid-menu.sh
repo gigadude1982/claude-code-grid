@@ -100,7 +100,18 @@ at() { printf '%s[%d;%dH' "$esc" "$1" "$2"; }
 
 mouse_on()  { printf '%s[?1000h%s[?1006h' "$esc" "$esc"; }
 mouse_off() { printf '%s[?1000l%s[?1006l' "$esc" "$esc"; }
-cleanup()   { mouse_off; printf '%s[0m%s[?25h%s[2J%s[H' "$esc" "$esc" "$esc" "$esc"; }
+# Echo stays OFF for the screen's whole life, not just inside each `read -s`.
+# read -s only silences the tty while it is blocked reading; a mouse click is
+# two sequences (press …M, then release …m), and the release lands while the
+# press is still being handled — redrawing, running tmux — when echo is back
+# on. The tty driver then prints it at wherever the cursor last stopped,
+# which is how `^[[<0;68;12m` ended up glued to the selected row.
+stty_saved=$(stty -g 2>/dev/null)
+stty -echo 2>/dev/null
+cleanup()   {
+  mouse_off; printf '%s[0m%s[?25h%s[2J%s[H' "$esc" "$esc" "$esc" "$esc"
+  [ -n "$stty_saved" ] && stty "$stty_saved" 2>/dev/null
+}
 trap cleanup EXIT INT TERM
 
 sel=1

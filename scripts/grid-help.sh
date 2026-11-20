@@ -79,6 +79,17 @@ printf '\n %spress any key — or click the %s✗%s' "$d" "$red" "$r"
 # with stdin redirected rather than in the popup's tty.
 cols=$(tput cols 2>/dev/null) || cols=82
 printf '%s7%s[1;%dH%s%s✗%s%s8' "$esc" "$esc" "$((cols-2))" "$b" "$red" "$r" "$esc"
+# Echo off around the wait, not just inside it: a click's release sequence
+# arrives after read -n1 has already returned on the press, and with echo back
+# on it would be printed raw over the screen on the way out.
+stty_saved=$(stty -g 2>/dev/null)
+stty -echo 2>/dev/null
 printf '%s[?1000h%s[?1006h' "$esc" "$esc"
 read -rsn1 || true
 printf '%s[?1000l%s[?1006l' "$esc" "$esc"
+# Swallow the rest of the sequence (and its release) so it can't reach the
+# menu this screen returns to. Not a `read -t` loop: bash 3.2 can't time out
+# under a second, so every close would stall. VMIN=0/VTIME=1 makes the tty
+# itself return EOF after a tenth of a second of quiet, and cat stops there.
+stty -icanon min 0 time 1 2>/dev/null && cat >/dev/null 2>&1
+[ -n "$stty_saved" ] && stty "$stty_saved" 2>/dev/null

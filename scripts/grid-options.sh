@@ -50,6 +50,7 @@ opt_names=(
   'screensaver backdrop'
   'screensaver opacity'
   'screensaver delay'
+  'screensaver sound'
 )
 opt_descs=(
   'colour scheme for this session — chrome, pane grounds, highlight; applies instantly'
@@ -62,6 +63,7 @@ opt_descs=(
   ''   # ditto — the backdrop's blurb describes the pick
   'how far an effect fades toward the session background; auto dims only under a backdrop'
   'idle time before the screensaver takes every client (server-wide)'
+  ''   # per-value, like the saver rows: "bell" and "high" mean different machines
 )
 
 # Rows 7 and 8 describe their VALUE — "starfield" and "standby" want different
@@ -70,8 +72,23 @@ desc_of() {
   case $1 in
     7) grid_saver_desc "$(saver_current)" ;;
     8) grid_backdrop_desc "$(backdrop_current)" ;;
+    11)
+      case "$(sound_current)" in
+        off)  print -r -- 'silent — the arcade savers (volley, bricks, invasion, serpent) can beep' ;;
+        bell) print -r -- 'a terminal bell on points, lives and levels — rings on YOUR screen, even remote' ;;
+        *)    print -r -- 'chiptune blips from the arcade savers, played on the machine running tmux' ;;
+      esac ;;
     *) print -r -- "${opt_descs[$1]}" ;;
   esac
+}
+
+# Sound resolves like every saver option: session, file, global, then off.
+. "$SCRIPT_DIR/grid-sound.sh"
+sound_current() {
+  local v=$(tmux show-options -v -t "$sess" @grid_saver_sound 2>/dev/null)
+  [ -n "$v" ] || v=$(cat "$GRID_CONFIG/sound.$sess" 2>/dev/null)
+  [ -n "$v" ] || v=$(tmux show-options -gv @grid_saver_sound 2>/dev/null)
+  print -r -- "${v:-off}"
 }
 
 # Same resolution order as grid-saver.sh: the session's option, then the file
@@ -165,12 +182,22 @@ value_of() {
     10)
       rain_label "$(tmux show-options -gv lock-after-time 2>/dev/null)"
       ;;
+    11)
+      # Muted is said out loud: a row reading "med" while the 🔔 chip has
+      # silenced everything would leave you wondering why nothing beeps.
+      local s=$(sound_current) m=$(tmux show-options -gv @grid_mute 2>/dev/null)
+      if [ "$s" != off ] && [[ "$m" == <-> ]] && (( m > $(date +%s) )); then
+        print -r -- "$s (muted)"
+      else
+        print -r -- "$s"
+      fi
+      ;;
   esac
 }
 
 edit_title() {
   local cur=$(tmux show-options -v -t "$sess" @grid_title 2>/dev/null) t=''
-  mouse_off; printf '%s[?25h' "$esc"
+  mouse_off; printf '%s[?25h' "$esc"; stty echo 2>/dev/null
   at $input_row 1; printf '%s[2K' "$esc"
   at $input_row 1
   t=$cur
@@ -185,7 +212,7 @@ edit_title() {
   else
     tmux set-option -t "$sess" -u @grid_title 2>/dev/null
   fi
-  printf '%s[?25l' "$esc"; mouse_on
+  stty -echo 2>/dev/null; printf '%s[?25l' "$esc"; mouse_on
 }
 
 change() { # change <index> <1|-1>
@@ -250,13 +277,53 @@ change() { # change <index> <1|-1>
       (( i += dir )); (( i < 1 )) && i=n; (( i > n )) && i=1
       tmux set-option -g lock-after-time "${rain_steps[i]}" 2>/dev/null
       ;;
+    11)
+      local nxt=$(grid_sound_level_step $dir "$(sound_current)")
+      tmux set-option -t "$sess" @grid_saver_sound "$nxt" 2>/dev/null
+      mkdir -p "$GRID_CONFIG"
+      print -r -- "$nxt" > "$GRID_CONFIG/sound.$sess"
+      # A sample at the new level, so the choice is made by ear. The first
+      # one also renders the sound bank, which takes a moment once.
+      case "$nxt" in
+        bell) printf '\a' ;;
+        low|med|high)
+          GRID_SOUND_PLAYER=$(grid_sound_player)
+          [ -n "$GRID_SOUND_PLAYER" ] && grid_sound_build && grid_sound_play point "$nxt"
+          ;;
+      esac
+      ;;
   esac
+}
+
+# preview — run the selected screensaver here, in the popup, until a key.
+# The explicit argument is the host's "show me this one" path: it skips the
+# blocked-pane gate, so you see the effect you picked rather than standby.
+preview() {
+  mouse_off; printf '%s[0m%s[2J' "$esc" "$esc"
+  "$SCRIPT_DIR/grid-saver.sh" "$(saver_current)"
+  # The key that ended it may have been the front of a longer sequence (an
+  # arrow, a click); let the tail arrive and drop it rather than act on it.
+  stty -icanon min 0 time 1 2>/dev/null; cat >/dev/null 2>&1
+  [ -n "$stty_saved" ] && stty "$stty_saved" 2>/dev/null
+  stty -echo 2>/dev/null
+  printf '%s[?25l' "$esc"; mouse_on
 }
 
 at() { printf '%s[%d;%dH' "$esc" "$1" "$2"; }
 mouse_on()  { printf '%s[?1000h%s[?1006h' "$esc" "$esc"; }
 mouse_off() { printf '%s[?1000l%s[?1006l' "$esc" "$esc"; }
-cleanup()   { mouse_off; printf '%s[0m%s[?25h%s[2J%s[H' "$esc" "$esc" "$esc" "$esc"; }
+# Echo stays OFF for the screen's whole life, not just inside each `read -s`.
+# read -s only silences the tty while it is blocked reading; a mouse click is
+# two sequences (press …M, then release …m), and the release lands while the
+# press is still being handled — redrawing, running tmux — when echo is back
+# on. The tty driver then prints it at wherever the cursor last stopped,
+# which is how `^[[<0;68;12m` ended up glued to the selected row.
+stty_saved=$(stty -g 2>/dev/null)
+stty -echo 2>/dev/null
+cleanup()   {
+  mouse_off; printf '%s[0m%s[?25h%s[2J%s[H' "$esc" "$esc" "$esc" "$esc"
+  [ -n "$stty_saved" ] && stty "$stty_saved" 2>/dev/null
+}
 trap cleanup EXIT INT TERM
 
 sel=1
@@ -309,7 +376,7 @@ draw() {
   at $r $col; printf '%s[2m%s%s[0m' "$esc" "$line" "$esc"
   (( r += 2 ))
   input_row=$r
-  line='↑↓ select · ‹ › change · enter toggle/edit · esc back'
+  line='↑↓ select · ‹ › change · enter toggle/edit · p preview saver · esc back'
   col=$(( (cols - ${#line}) / 2 + 1 )); (( col < 1 )) && col=1
   at $r $col; printf '%s[2m%s%s[0m' "$esc" "$line" "$esc"
   at 1 $(( cols - 2 )); printf '%s[1;38;5;203m✗%s[0m' "$esc" "$esc"
@@ -365,6 +432,7 @@ while :; do
       h) key=left ;;
       l) key=right ;;
       q|Q) key=back ;;
+      p|P) key=preview ;;
     esac
   fi
   case "$key" in
@@ -372,6 +440,7 @@ while :; do
     down)  (( sel = sel == n_opts ? 1 : sel + 1 )); draw ;;
     left)  change $sel -1; draw ;;
     right) change $sel 1; draw ;;
+    preview) preview; draw ;;
     back)  break ;;
   esac
 done
