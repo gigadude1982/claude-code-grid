@@ -299,6 +299,15 @@ change() { # change <index> <1|-1>
 # The explicit argument is the host's "show me this one" path: it skips the
 # blocked-pane gate, so you see the effect you picked rather than standby.
 preview() {
+  local c
+  # Opened by a click: the button's release (…m) is still on its way, and the
+  # saver wakes on ANY input — it would take the release as "wake up" and
+  # vanish the instant it appeared. So wait the release out first: read up to
+  # its terminating 'm', or give up after a second of nothing (a release that
+  # never comes must not hang the screen).
+  if [ "${1:-}" = click ]; then
+    while read -srk1 -t 1 c 2>/dev/null; do [[ "$c" == m ]] && break; done
+  fi
   mouse_off; printf '%s[0m%s[2J' "$esc" "$esc"
   "$SCRIPT_DIR/grid-saver.sh" "$(saver_current)"
   # The key that ended it may have been the front of a longer sequence (an
@@ -329,8 +338,9 @@ trap cleanup EXIT INT TERM
 sel=1
 box_w=64
 n_opts=${#opt_names}
-content_h=$(( ${#header} + 2 + n_opts + 2 + 4 ))
+content_h=$(( ${#header} + 2 + n_opts + 2 + 4 + 4 ))
 first_row=1 box_col=1 input_row=$rows desc_row=$rows
+btn_row=0 btn_col=0 btn_w=0
 
 draw() {
   local acc=$(accent) r i line col v marker
@@ -375,11 +385,27 @@ draw() {
   col=$(( (cols - ${#line}) / 2 + 1 )); (( col < 1 )) && col=1
   at $r $col; printf '%s[2m%s%s[0m' "$esc" "$line" "$esc"
   (( r += 2 ))
+
+  # The preview button: a boxed, clickable thing rather than only a "p" in the
+  # hint line — the hint read as something to click, and a click there used
+  # to land on "no item" and close the screen. Named after the saver it will
+  # run, so it is plain what you're about to see.
+  line="▶  preview $(saver_current)"
+  btn_w=$(( ${#line} + 6 )); btn_row=$r
+  btn_col=$(( (cols - btn_w) / 2 + 1 )); (( btn_col < 1 )) && btn_col=1
+  local bar=$(printf '─%.0s' {1..$(( btn_w - 2 ))})
+  printf '%s[1;38;5;%dm' "$esc" "$acc"
+  at $r $btn_col;             printf '╭%s╮' "$bar"
+  at $(( r + 1 )) $btn_col;   printf '│  %s  │' "$line"
+  at $(( r + 2 )) $btn_col;   printf '╰%s╯' "$bar"
+  printf '%s[0m' "$esc"
+  (( r += 4 ))
+
   input_row=$r
-  line='↑↓ select · ‹ › change · enter toggle/edit · p preview saver · esc back'
+  line='↑↓ select · ‹ › change · enter toggle/edit · p preview · esc back'
   col=$(( (cols - ${#line}) / 2 + 1 )); (( col < 1 )) && col=1
   at $r $col; printf '%s[2m%s%s[0m' "$esc" "$line" "$esc"
-  at 1 $(( cols - 2 )); printf '%s[1;38;5;203m✗%s[0m' "$esc" "$esc"
+  grid_close_button "$cols"
 }
 
 printf '%s[?25l' "$esc"
@@ -415,6 +441,9 @@ while :; do
               # First click lands the cursor; a click on the already-selected
               # row is the change gesture, so a misclick can't toggle.
               if (( i == sel )); then key=right; else sel=$i; draw; fi
+            elif (( cy >= btn_row && cy < btn_row + 3 && \
+                    cx >= btn_col && cx < btn_col + btn_w )); then
+              key=preview_click
             else
               key=back
             fi
@@ -441,6 +470,7 @@ while :; do
     left)  change $sel -1; draw ;;
     right) change $sel 1; draw ;;
     preview) preview; draw ;;
+    preview_click) preview click; draw ;;
     back)  break ;;
   esac
 done

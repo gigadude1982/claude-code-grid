@@ -152,7 +152,7 @@ draw() {
   hint_row=$(( r + 1 ))
   hint '↑↓ select · enter or click choose · esc close'
   # The red ✗ close affordance, same corner as the cheatsheet's.
-  at 1 $(( cols - 2 )); printf '%s[1;38;5;203m✗%s[0m' "$esc" "$esc"
+  grid_close_button "$cols"
 }
 
 hint() {

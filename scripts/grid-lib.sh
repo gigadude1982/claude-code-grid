@@ -164,6 +164,21 @@ grid_repo_list() {
     | sort
 }
 
+# grid_close_button <cols> — the red close button the popups (menu, options,
+# help) draw in their top-right corner: a 3-row box around the ✗ rather than
+# the lone ✗ glyph it replaced, which was one cell to aim a finger at on an
+# iPad. Purely a drawing: on every one of those screens a click that lands on
+# no item already closes, so the button needs no hit-test of its own — it shows
+# where to click. Cursor is saved and restored, so it can be drawn mid-layout.
+# Plain printf, no zsh-isms: the help screen is bash.
+grid_close_button() {
+  local c=$(( $1 - 5 )) e=$'\033'
+  [ "$c" -lt 1 ] && c=1
+  printf '%s7%s[1;38;5;203m' "$e" "$e"
+  printf '%s[1;%dH╭───╮%s[2;%dH│ ✗ │%s[3;%dH╰───╯' "$e" "$c" "$e" "$c" "$e" "$c"
+  printf '%s[0m%s8' "$e" "$e"
+}
+
 # ── Screensavers ─────────────────────────────────────────────────────────────
 # The lock-command (grid-saver.sh) is a host: it resolves the client's session,
 # accent and size, then sources scripts/savers/<name>.sh and calls the animate()

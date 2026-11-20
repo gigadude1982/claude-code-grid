@@ -78,7 +78,8 @@ printf '\n %spress any key — or click the %s✗%s' "$d" "$red" "$r"
 # `|| true`: read returns non-zero on EOF, which happens whenever this is run
 # with stdin redirected rather than in the popup's tty.
 cols=$(tput cols 2>/dev/null) || cols=82
-printf '%s7%s[1;%dH%s%s✗%s%s8' "$esc" "$esc" "$((cols-2))" "$b" "$red" "$r" "$esc"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/grid-lib.sh"
+grid_close_button "$cols"
 # Echo off around the wait, not just inside it: a click's release sequence
 # arrives after read -n1 has already returned on the press, and with echo back
 # on it would be printed raw over the screen on the way out.
